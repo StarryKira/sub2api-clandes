@@ -10,6 +10,9 @@ generate:
 	go generate ./ent
 	go generate ./cmd/server
 
+capnp-gen:
+	go generate ./internal/pkg/clandes/proto
+
 test:
 	go test ./...
 	golangci-lint run ./...
