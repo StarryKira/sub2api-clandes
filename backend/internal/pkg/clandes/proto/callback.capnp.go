@@ -8,6 +8,7 @@ import (
 	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	strconv "strconv"
 )
 
 type UsageReport capnp.Struct
@@ -16,12 +17,12 @@ type UsageReport capnp.Struct
 const UsageReport_TypeID = 0xb7b3a92001d42bcc
 
 func NewUsageReport(s *capnp.Segment) (UsageReport, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 24, PointerCount: 3})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3})
 	return UsageReport(st), err
 }
 
 func NewRootUsageReport(s *capnp.Segment) (UsageReport, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 24, PointerCount: 3})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3})
 	return UsageReport(st), err
 }
 
@@ -151,12 +152,28 @@ func (s UsageReport) SetDurationMs(v uint64) {
 	capnp.Struct(s).SetUint64(16, v)
 }
 
+func (s UsageReport) CacheReadTokens() uint32 {
+	return capnp.Struct(s).Uint32(24)
+}
+
+func (s UsageReport) SetCacheReadTokens(v uint32) {
+	capnp.Struct(s).SetUint32(24, v)
+}
+
+func (s UsageReport) CacheWriteTokens() uint32 {
+	return capnp.Struct(s).Uint32(28)
+}
+
+func (s UsageReport) SetCacheWriteTokens(v uint32) {
+	capnp.Struct(s).SetUint32(28, v)
+}
+
 // UsageReport_List is a list of UsageReport.
 type UsageReport_List = capnp.StructList[UsageReport]
 
 // NewUsageReport creates a new list of UsageReport.
 func NewUsageReport_List(s *capnp.Segment, sz int32) (UsageReport_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 24, PointerCount: 3}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3}, sz)
 	return capnp.StructList[UsageReport](l), err
 }
 
@@ -294,6 +311,338 @@ func (f StreamChunkEvent_Future) Struct() (StreamChunkEvent, error) {
 	return StreamChunkEvent(p.Struct()), err
 }
 
+type ThinkingLevelOverride uint16
+
+// ThinkingLevelOverride_TypeID is the unique identifier for the type ThinkingLevelOverride.
+const ThinkingLevelOverride_TypeID = 0x8e65dbd5998695ef
+
+// Values of ThinkingLevelOverride.
+const (
+	ThinkingLevelOverride_noOverride ThinkingLevelOverride = 0
+	ThinkingLevelOverride_disabled   ThinkingLevelOverride = 1
+	ThinkingLevelOverride_low        ThinkingLevelOverride = 2
+	ThinkingLevelOverride_medium     ThinkingLevelOverride = 3
+	ThinkingLevelOverride_high       ThinkingLevelOverride = 4
+	ThinkingLevelOverride_xhigh      ThinkingLevelOverride = 5
+)
+
+// String returns the enum's constant name.
+func (c ThinkingLevelOverride) String() string {
+	switch c {
+	case ThinkingLevelOverride_noOverride:
+		return "noOverride"
+	case ThinkingLevelOverride_disabled:
+		return "disabled"
+	case ThinkingLevelOverride_low:
+		return "low"
+	case ThinkingLevelOverride_medium:
+		return "medium"
+	case ThinkingLevelOverride_high:
+		return "high"
+	case ThinkingLevelOverride_xhigh:
+		return "xhigh"
+
+	default:
+		return ""
+	}
+}
+
+// ThinkingLevelOverrideFromString returns the enum value with a name,
+// or the zero value if there's no such value.
+func ThinkingLevelOverrideFromString(c string) ThinkingLevelOverride {
+	switch c {
+	case "noOverride":
+		return ThinkingLevelOverride_noOverride
+	case "disabled":
+		return ThinkingLevelOverride_disabled
+	case "low":
+		return ThinkingLevelOverride_low
+	case "medium":
+		return ThinkingLevelOverride_medium
+	case "high":
+		return ThinkingLevelOverride_high
+	case "xhigh":
+		return ThinkingLevelOverride_xhigh
+
+	default:
+		return 0
+	}
+}
+
+type ThinkingLevelOverride_List = capnp.EnumList[ThinkingLevelOverride]
+
+func NewThinkingLevelOverride_List(s *capnp.Segment, sz int32) (ThinkingLevelOverride_List, error) {
+	return capnp.NewEnumList[ThinkingLevelOverride](s, sz)
+}
+
+type RouteResult capnp.Struct
+type RouteResult_routed RouteResult
+type RouteResult_rejected RouteResult
+type RouteResult_Which uint16
+
+const (
+	RouteResult_Which_routed   RouteResult_Which = 0
+	RouteResult_Which_rejected RouteResult_Which = 1
+)
+
+func (w RouteResult_Which) String() string {
+	const s = "routedrejected"
+	switch w {
+	case RouteResult_Which_routed:
+		return s[0:6]
+	case RouteResult_Which_rejected:
+		return s[6:14]
+
+	}
+	return "RouteResult_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
+
+// RouteResult_TypeID is the unique identifier for the type RouteResult.
+const RouteResult_TypeID = 0xcb6cee0eecbdac96
+
+func NewRouteResult(s *capnp.Segment) (RouteResult, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return RouteResult(st), err
+}
+
+func NewRootRouteResult(s *capnp.Segment) (RouteResult, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return RouteResult(st), err
+}
+
+func ReadRootRouteResult(msg *capnp.Message) (RouteResult, error) {
+	root, err := msg.Root()
+	return RouteResult(root.Struct()), err
+}
+
+func (s RouteResult) String() string {
+	str, _ := text.Marshal(0xcb6cee0eecbdac96, capnp.Struct(s))
+	return str
+}
+
+func (s RouteResult) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (RouteResult) DecodeFromPtr(p capnp.Ptr) RouteResult {
+	return RouteResult(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s RouteResult) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s RouteResult) Which() RouteResult_Which {
+	return RouteResult_Which(capnp.Struct(s).Uint16(2))
+}
+func (s RouteResult) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s RouteResult) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s RouteResult) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s RouteResult) Routed() RouteResult_routed { return RouteResult_routed(s) }
+
+func (s RouteResult) SetRouted() {
+	capnp.Struct(s).SetUint16(2, 0)
+}
+
+func (s RouteResult_routed) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s RouteResult_routed) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s RouteResult_routed) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s RouteResult_routed) AccountId() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s RouteResult_routed) HasAccountId() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s RouteResult_routed) AccountIdBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s RouteResult_routed) SetAccountId(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s RouteResult_routed) ModelOverride() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s RouteResult_routed) HasModelOverride() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s RouteResult_routed) ModelOverrideBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s RouteResult_routed) SetModelOverride(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+func (s RouteResult_routed) ThinkingLevelOverride() ThinkingLevelOverride {
+	return ThinkingLevelOverride(capnp.Struct(s).Uint16(0))
+}
+
+func (s RouteResult_routed) SetThinkingLevelOverride(v ThinkingLevelOverride) {
+	capnp.Struct(s).SetUint16(0, uint16(v))
+}
+
+func (s RouteResult) Rejected() RouteResult_rejected { return RouteResult_rejected(s) }
+
+func (s RouteResult) SetRejected() {
+	capnp.Struct(s).SetUint16(2, 1)
+}
+
+func (s RouteResult_rejected) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s RouteResult_rejected) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s RouteResult_rejected) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s RouteResult_rejected) StatusCode() uint16 {
+	return capnp.Struct(s).Uint16(0)
+}
+
+func (s RouteResult_rejected) SetStatusCode(v uint16) {
+	capnp.Struct(s).SetUint16(0, v)
+}
+
+func (s RouteResult_rejected) Message_() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s RouteResult_rejected) HasMessage_() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s RouteResult_rejected) Message_Bytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s RouteResult_rejected) SetMessage_(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+// RouteResult_List is a list of RouteResult.
+type RouteResult_List = capnp.StructList[RouteResult]
+
+// NewRouteResult creates a new list of RouteResult.
+func NewRouteResult_List(s *capnp.Segment, sz int32) (RouteResult_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return capnp.StructList[RouteResult](l), err
+}
+
+// RouteResult_Future is a wrapper for a RouteResult promised by a client call.
+type RouteResult_Future struct{ *capnp.Future }
+
+func (f RouteResult_Future) Struct() (RouteResult, error) {
+	p, err := f.Future.Ptr()
+	return RouteResult(p.Struct()), err
+}
+func (p RouteResult_Future) Routed() RouteResult_routed_Future {
+	return RouteResult_routed_Future{p.Future}
+}
+
+// RouteResult_routed_Future is a wrapper for a RouteResult_routed promised by a client call.
+type RouteResult_routed_Future struct{ *capnp.Future }
+
+func (f RouteResult_routed_Future) Struct() (RouteResult_routed, error) {
+	p, err := f.Future.Ptr()
+	return RouteResult_routed(p.Struct()), err
+}
+func (p RouteResult_Future) Rejected() RouteResult_rejected_Future {
+	return RouteResult_rejected_Future{p.Future}
+}
+
+// RouteResult_rejected_Future is a wrapper for a RouteResult_rejected promised by a client call.
+type RouteResult_rejected_Future struct{ *capnp.Future }
+
+func (f RouteResult_rejected_Future) Struct() (RouteResult_rejected, error) {
+	p, err := f.Future.Ptr()
+	return RouteResult_rejected(p.Struct()), err
+}
+
+type AccountEventKind uint16
+
+// AccountEventKind_TypeID is the unique identifier for the type AccountEventKind.
+const AccountEventKind_TypeID = 0x9feb9afedcb9d848
+
+// Values of AccountEventKind.
+const (
+	AccountEventKind_added         AccountEventKind = 0
+	AccountEventKind_removed       AccountEventKind = 1
+	AccountEventKind_refreshed     AccountEventKind = 2
+	AccountEventKind_configUpdated AccountEventKind = 3
+)
+
+// String returns the enum's constant name.
+func (c AccountEventKind) String() string {
+	switch c {
+	case AccountEventKind_added:
+		return "added"
+	case AccountEventKind_removed:
+		return "removed"
+	case AccountEventKind_refreshed:
+		return "refreshed"
+	case AccountEventKind_configUpdated:
+		return "configUpdated"
+
+	default:
+		return ""
+	}
+}
+
+// AccountEventKindFromString returns the enum value with a name,
+// or the zero value if there's no such value.
+func AccountEventKindFromString(c string) AccountEventKind {
+	switch c {
+	case "added":
+		return AccountEventKind_added
+	case "removed":
+		return AccountEventKind_removed
+	case "refreshed":
+		return AccountEventKind_refreshed
+	case "configUpdated":
+		return AccountEventKind_configUpdated
+
+	default:
+		return 0
+	}
+}
+
+type AccountEventKind_List = capnp.EnumList[AccountEventKind]
+
+func NewAccountEventKind_List(s *capnp.Segment, sz int32) (AccountEventKind_List, error) {
+	return capnp.NewEnumList[AccountEventKind](s, sz)
+}
+
 type Router capnp.Client
 
 // Router_TypeID is the unique identifier for the type Router.
@@ -310,7 +659,7 @@ func (c Router) RouteRequest(ctx context.Context, params func(Router_routeReques
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 4}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 5}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Router_routeRequest_Params(s)) }
 	}
 
@@ -356,6 +705,26 @@ func (c Router) ReportChunk(ctx context.Context, params func(Router_reportChunk_
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Router_reportChunk_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Router) OnAccountEvent(ctx context.Context, params func(Router_onAccountEvent_Params) error) (Router_onAccountEvent_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xc2787f08c0de0eb1,
+			MethodID:      3,
+			InterfaceName: "callback.capnp:Router",
+			MethodName:    "onAccountEvent",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Router_onAccountEvent_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Router_onAccountEvent_Results_Future{Future: ans.Future()}, release
 
 }
 
@@ -437,6 +806,8 @@ type Router_Server interface {
 	ReportUsage(context.Context, Router_reportUsage) error
 
 	ReportChunk(context.Context, Router_reportChunk) error
+
+	OnAccountEvent(context.Context, Router_onAccountEvent) error
 }
 
 // Router_NewServer creates a new Server from an implementation of Router_Server.
@@ -455,7 +826,7 @@ func Router_ServerToClient(s Router_Server) Router {
 // This can be used to create a more complicated Server.
 func Router_Methods(methods []server.Method, s Router_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 3)
+		methods = make([]server.Method, 0, 4)
 	}
 
 	methods = append(methods, server.Method{
@@ -491,6 +862,18 @@ func Router_Methods(methods []server.Method, s Router_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.ReportChunk(ctx, Router_reportChunk{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xc2787f08c0de0eb1,
+			MethodID:      3,
+			InterfaceName: "callback.capnp:Router",
+			MethodName:    "onAccountEvent",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.OnAccountEvent(ctx, Router_onAccountEvent{call})
 		},
 	})
 
@@ -548,6 +931,23 @@ func (c Router_reportChunk) AllocResults() (Router_reportChunk_Results, error) {
 	return Router_reportChunk_Results(r), err
 }
 
+// Router_onAccountEvent holds the state for a server call to Router.onAccountEvent.
+// See server.Call for documentation.
+type Router_onAccountEvent struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Router_onAccountEvent) Args() Router_onAccountEvent_Params {
+	return Router_onAccountEvent_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Router_onAccountEvent) AllocResults() (Router_onAccountEvent_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Router_onAccountEvent_Results(r), err
+}
+
 // Router_List is a list of Router.
 type Router_List = capnp.CapList[Router]
 
@@ -563,12 +963,12 @@ type Router_routeRequest_Params capnp.Struct
 const Router_routeRequest_Params_TypeID = 0xef6c55360ad6023c
 
 func NewRouter_routeRequest_Params(s *capnp.Segment) (Router_routeRequest_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 4})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 5})
 	return Router_routeRequest_Params(st), err
 }
 
 func NewRootRouter_routeRequest_Params(s *capnp.Segment) (Router_routeRequest_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 4})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 5})
 	return Router_routeRequest_Params(st), err
 }
 
@@ -676,12 +1076,30 @@ func (s Router_routeRequest_Params) SetEndpoint(v string) error {
 	return capnp.Struct(s).SetText(3, v)
 }
 
+func (s Router_routeRequest_Params) UserAgent() (string, error) {
+	p, err := capnp.Struct(s).Ptr(4)
+	return p.Text(), err
+}
+
+func (s Router_routeRequest_Params) HasUserAgent() bool {
+	return capnp.Struct(s).HasPtr(4)
+}
+
+func (s Router_routeRequest_Params) UserAgentBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(4)
+	return p.TextBytes(), err
+}
+
+func (s Router_routeRequest_Params) SetUserAgent(v string) error {
+	return capnp.Struct(s).SetText(4, v)
+}
+
 // Router_routeRequest_Params_List is a list of Router_routeRequest_Params.
 type Router_routeRequest_Params_List = capnp.StructList[Router_routeRequest_Params]
 
 // NewRouter_routeRequest_Params creates a new list of Router_routeRequest_Params.
 func NewRouter_routeRequest_Params_List(s *capnp.Segment, sz int32) (Router_routeRequest_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 4}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 5}, sz)
 	return capnp.StructList[Router_routeRequest_Params](l), err
 }
 
@@ -740,22 +1158,28 @@ func (s Router_routeRequest_Results) Message() *capnp.Message {
 func (s Router_routeRequest_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Router_routeRequest_Results) AccountId() (string, error) {
+func (s Router_routeRequest_Results) Result() (RouteResult, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
+	return RouteResult(p.Struct()), err
 }
 
-func (s Router_routeRequest_Results) HasAccountId() bool {
+func (s Router_routeRequest_Results) HasResult() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Router_routeRequest_Results) AccountIdBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
+func (s Router_routeRequest_Results) SetResult(v RouteResult) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
-func (s Router_routeRequest_Results) SetAccountId(v string) error {
-	return capnp.Struct(s).SetText(0, v)
+// NewResult sets the result field to a newly
+// allocated RouteResult struct, preferring placement in s's segment.
+func (s Router_routeRequest_Results) NewResult() (RouteResult, error) {
+	ss, err := NewRouteResult(capnp.Struct(s).Segment())
+	if err != nil {
+		return RouteResult{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
 }
 
 // Router_routeRequest_Results_List is a list of Router_routeRequest_Results.
@@ -773,6 +1197,9 @@ type Router_routeRequest_Results_Future struct{ *capnp.Future }
 func (f Router_routeRequest_Results_Future) Struct() (Router_routeRequest_Results, error) {
 	p, err := f.Future.Ptr()
 	return Router_routeRequest_Results(p.Struct()), err
+}
+func (p Router_routeRequest_Results_Future) Result() RouteResult_Future {
+	return RouteResult_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Router_reportUsage_Params capnp.Struct
@@ -1121,6 +1548,161 @@ type Router_reportChunk_Results_Future struct{ *capnp.Future }
 func (f Router_reportChunk_Results_Future) Struct() (Router_reportChunk_Results, error) {
 	p, err := f.Future.Ptr()
 	return Router_reportChunk_Results(p.Struct()), err
+}
+
+type Router_onAccountEvent_Params capnp.Struct
+
+// Router_onAccountEvent_Params_TypeID is the unique identifier for the type Router_onAccountEvent_Params.
+const Router_onAccountEvent_Params_TypeID = 0x8993aa56e597383a
+
+func NewRouter_onAccountEvent_Params(s *capnp.Segment) (Router_onAccountEvent_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Router_onAccountEvent_Params(st), err
+}
+
+func NewRootRouter_onAccountEvent_Params(s *capnp.Segment) (Router_onAccountEvent_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Router_onAccountEvent_Params(st), err
+}
+
+func ReadRootRouter_onAccountEvent_Params(msg *capnp.Message) (Router_onAccountEvent_Params, error) {
+	root, err := msg.Root()
+	return Router_onAccountEvent_Params(root.Struct()), err
+}
+
+func (s Router_onAccountEvent_Params) String() string {
+	str, _ := text.Marshal(0x8993aa56e597383a, capnp.Struct(s))
+	return str
+}
+
+func (s Router_onAccountEvent_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Router_onAccountEvent_Params) DecodeFromPtr(p capnp.Ptr) Router_onAccountEvent_Params {
+	return Router_onAccountEvent_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Router_onAccountEvent_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Router_onAccountEvent_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Router_onAccountEvent_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Router_onAccountEvent_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Router_onAccountEvent_Params) AccountId() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Router_onAccountEvent_Params) HasAccountId() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Router_onAccountEvent_Params) AccountIdBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Router_onAccountEvent_Params) SetAccountId(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Router_onAccountEvent_Params) Kind() AccountEventKind {
+	return AccountEventKind(capnp.Struct(s).Uint16(0))
+}
+
+func (s Router_onAccountEvent_Params) SetKind(v AccountEventKind) {
+	capnp.Struct(s).SetUint16(0, uint16(v))
+}
+
+// Router_onAccountEvent_Params_List is a list of Router_onAccountEvent_Params.
+type Router_onAccountEvent_Params_List = capnp.StructList[Router_onAccountEvent_Params]
+
+// NewRouter_onAccountEvent_Params creates a new list of Router_onAccountEvent_Params.
+func NewRouter_onAccountEvent_Params_List(s *capnp.Segment, sz int32) (Router_onAccountEvent_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[Router_onAccountEvent_Params](l), err
+}
+
+// Router_onAccountEvent_Params_Future is a wrapper for a Router_onAccountEvent_Params promised by a client call.
+type Router_onAccountEvent_Params_Future struct{ *capnp.Future }
+
+func (f Router_onAccountEvent_Params_Future) Struct() (Router_onAccountEvent_Params, error) {
+	p, err := f.Future.Ptr()
+	return Router_onAccountEvent_Params(p.Struct()), err
+}
+
+type Router_onAccountEvent_Results capnp.Struct
+
+// Router_onAccountEvent_Results_TypeID is the unique identifier for the type Router_onAccountEvent_Results.
+const Router_onAccountEvent_Results_TypeID = 0xcac3d8265e93b7f4
+
+func NewRouter_onAccountEvent_Results(s *capnp.Segment) (Router_onAccountEvent_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Router_onAccountEvent_Results(st), err
+}
+
+func NewRootRouter_onAccountEvent_Results(s *capnp.Segment) (Router_onAccountEvent_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Router_onAccountEvent_Results(st), err
+}
+
+func ReadRootRouter_onAccountEvent_Results(msg *capnp.Message) (Router_onAccountEvent_Results, error) {
+	root, err := msg.Root()
+	return Router_onAccountEvent_Results(root.Struct()), err
+}
+
+func (s Router_onAccountEvent_Results) String() string {
+	str, _ := text.Marshal(0xcac3d8265e93b7f4, capnp.Struct(s))
+	return str
+}
+
+func (s Router_onAccountEvent_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Router_onAccountEvent_Results) DecodeFromPtr(p capnp.Ptr) Router_onAccountEvent_Results {
+	return Router_onAccountEvent_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Router_onAccountEvent_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Router_onAccountEvent_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Router_onAccountEvent_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Router_onAccountEvent_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Router_onAccountEvent_Results_List is a list of Router_onAccountEvent_Results.
+type Router_onAccountEvent_Results_List = capnp.StructList[Router_onAccountEvent_Results]
+
+// NewRouter_onAccountEvent_Results creates a new list of Router_onAccountEvent_Results.
+func NewRouter_onAccountEvent_Results_List(s *capnp.Segment, sz int32) (Router_onAccountEvent_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Router_onAccountEvent_Results](l), err
+}
+
+// Router_onAccountEvent_Results_Future is a wrapper for a Router_onAccountEvent_Results promised by a client call.
+type Router_onAccountEvent_Results_Future struct{ *capnp.Future }
+
+func (f Router_onAccountEvent_Results_Future) Struct() (Router_onAccountEvent_Results, error) {
+	p, err := f.Future.Ptr()
+	return Router_onAccountEvent_Results(p.Struct()), err
 }
 
 type CallbackService capnp.Client
