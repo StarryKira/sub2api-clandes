@@ -443,6 +443,18 @@ const routes: RouteRecordRaw[] = [
       descriptionKey: 'admin.usage.description'
     }
   },
+  {
+    path: '/admin/clandes',
+    name: 'AdminClandes',
+    component: () => import('@/views/admin/ClandesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Clandes Integration',
+      titleKey: 'admin.clandes.title',
+      descriptionKey: 'admin.clandes.description'
+    }
+  },
 
 
   // ==================== Payment Admin Routes ====================
