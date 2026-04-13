@@ -83,6 +83,20 @@ type Config struct {
 	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
 	Update                  UpdateConfig                  `mapstructure:"update"`
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
+	Clandes                 ClandesConfig                 `mapstructure:"clandes"`
+}
+
+// ClandesConfig configures the clandes Cap'n Proto RPC integration.
+type ClandesConfig struct {
+	// Enabled enables the clandes integration. When true, sub2api connects to clandes
+	// on startup, syncs accounts, and registers a Router callback for billing.
+	Enabled bool `mapstructure:"enabled" yaml:"enabled"`
+	// Addr is the clandes RPC listen address, e.g. "127.0.0.1:8082"
+	Addr string `mapstructure:"addr" yaml:"addr"`
+	// AuthToken is the optional RPC authentication token (matches clandes RPC_AUTH_TOKEN).
+	AuthToken string `mapstructure:"auth_token" yaml:"auth_token"`
+	// ReconnectInterval is seconds between reconnect attempts on disconnect. Default: 5.
+	ReconnectInterval int `mapstructure:"reconnect_interval" yaml:"reconnect_interval"`
 }
 
 type LogConfig struct {

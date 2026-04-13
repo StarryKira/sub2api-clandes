@@ -1059,3 +1059,19 @@ update:
   # Leave empty for direct connection (recommended for overseas servers)
   # 留空表示直连（适用于海外服务器）
   proxy_url: ""
+
+# =============================================================================
+# Clandes Integration (clandes Cap'n Proto RPC 集成)
+# =============================================================================
+clandes:
+  # Enable clandes integration. When true, sub2api connects to clandes on startup,
+  # syncs accounts, and registers a Router callback for billing.
+  # 启用 clandes 集成。启用后 sub2api 在启动时连接 clandes，同步账号并注册计费回调。
+  enabled: false
+  # clandes RPC server address (clandes RPC 服务器地址)
+  addr: "127.0.0.1:8082"
+  # Optional RPC auth token (matches clandes RPC_AUTH_TOKEN env var)
+  # 可选的 RPC 认证 token（与 clandes 的 RPC_AUTH_TOKEN 环境变量一致）
+  auth_token: ""
+  # Reconnect interval in seconds on disconnect (断连后重连间隔，单位秒)
+  reconnect_interval: 5
