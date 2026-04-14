@@ -125,6 +125,80 @@ func (h *ClandesHandler) CreateAccount(c *gin.Context) {
 	response.Success(c, account)
 }
 
+// StartOAuthLogin initiates OAuth login via clandes's ClaudeAuthService.
+// POST /api/v1/admin/clandes/oauth/start
+func (h *ClandesHandler) StartOAuthLogin(c *gin.Context) {
+	if h.client == nil {
+		response.Error(c, http.StatusServiceUnavailable, "clandes integration is not enabled")
+		return
+	}
+	var req struct {
+		RedirectURI string `json:"redirect_uri" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	authURL, sessionID, err := h.client.StartOAuthLogin(c.Request.Context(), req.RedirectURI)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"auth_url": authURL, "session_id": sessionID})
+}
+
+// CompleteOAuthLogin exchanges the code for tokens and creates a clandes account.
+// POST /api/v1/admin/clandes/oauth/callback
+func (h *ClandesHandler) CompleteOAuthLogin(c *gin.Context) {
+	if h.client == nil {
+		response.Error(c, http.StatusServiceUnavailable, "clandes integration is not enabled")
+		return
+	}
+	var req struct {
+		SessionID   string `json:"session_id" binding:"required"`
+		Code        string `json:"code" binding:"required"`
+		CallbackURL string `json:"callback_url" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, err := h.client.CompleteOAuthLogin(c.Request.Context(), req.SessionID, req.Code, req.CallbackURL)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Create the account locally with clandes flag
+	name := "OAuth"
+	if result.Email != "" {
+		name = result.Email
+	}
+	account := &service.Account{
+		Name:     name,
+		Platform: service.PlatformAnthropic,
+		Type:     service.AccountTypeOAuth,
+		Credentials: map[string]any{
+			"access_token":  result.AccessToken,
+			"refresh_token": result.RefreshToken,
+		},
+		Extra:       map[string]any{"clandes": true},
+		Concurrency: 1,
+		Status:      "active",
+	}
+	if err := h.accountRepo.Create(c.Request.Context(), account); err != nil {
+		response.Error(c, http.StatusInternalServerError, fmt.Sprintf("create account: %v", err))
+		return
+	}
+
+	// Register to clandes
+	if err := service.RegisterSingleAccountToClandes(c.Request.Context(), h.client, account); err != nil {
+		c.Writer.Header().Set("X-Clandes-Sync-Warning", err.Error())
+	}
+
+	response.Success(c, account)
+}
+
 // DeleteAccount removes a clandes account from both sub2api and clandes.
 // DELETE /api/v1/admin/clandes/accounts/:id
 func (h *ClandesHandler) DeleteAccount(c *gin.Context) {

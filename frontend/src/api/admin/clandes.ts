@@ -40,8 +40,8 @@ export async function syncAccounts(): Promise<{ message: string }> {
 }
 
 export async function listAccounts(): Promise<ClandesAccount[]> {
-  const { data } = await apiClient.get<ClandesAccount[]>('/admin/clandes/accounts')
-  return data
+  const { data } = await apiClient.get<ClandesAccount[] | null>('/admin/clandes/accounts')
+  return data ?? []
 }
 
 export async function createAccount(req: CreateClandesAccountRequest): Promise<ClandesAccount> {
@@ -53,12 +53,33 @@ export async function deleteAccount(id: number): Promise<void> {
   await apiClient.delete(`/admin/clandes/accounts/${id}`)
 }
 
+export interface OAuthStartResponse {
+  auth_url: string
+  session_id: string
+}
+
+export async function startOAuth(redirectUri: string): Promise<OAuthStartResponse> {
+  const { data } = await apiClient.post<OAuthStartResponse>('/admin/clandes/oauth/start', { redirect_uri: redirectUri })
+  return data
+}
+
+export async function completeOAuth(sessionId: string, code: string, callbackUrl: string): Promise<ClandesAccount> {
+  const { data } = await apiClient.post<ClandesAccount>('/admin/clandes/oauth/callback', {
+    session_id: sessionId,
+    code,
+    callback_url: callbackUrl,
+  })
+  return data
+}
+
 export const clandesAPI = {
   getStatus,
   syncAccounts,
   listAccounts,
   createAccount,
-  deleteAccount
+  deleteAccount,
+  startOAuth,
+  completeOAuth
 }
 
 export default clandesAPI

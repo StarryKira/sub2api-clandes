@@ -5812,6 +5812,13 @@ export default {
       createFailed: '创建账号失败',
       deleteSuccess: '账号已删除',
       deleteFailed: '删除账号失败',
+      login: '登录',
+      oauthHint: '通过 OAuth 登录你的 Claude 账号。将会打开新窗口进行认证。',
+      startOAuth: '使用 Claude 登录',
+      oauthCodeHint: '登录后，将授权码粘贴到下方：',
+      oauthCodePlaceholder: '在此粘贴授权码',
+      completeOAuth: '完成登录',
+      oauthFailed: 'OAuth 登录失败',
     },
   },
 

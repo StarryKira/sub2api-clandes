@@ -76,7 +76,7 @@
         <div v-if="accountsLoading" class="flex items-center justify-center py-8">
           <div class="h-6 w-6 animate-spin rounded-full border-b-2 border-primary-600"></div>
         </div>
-        <div v-else-if="accounts.length === 0" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div v-else-if="!accounts || accounts.length === 0" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
           {{ t('admin.clandes.noAccounts') }}
         </div>
         <div v-else class="overflow-x-auto">
@@ -115,50 +115,54 @@
     </div>
 
     <!-- Create account dialog -->
+    <!-- Add account dialog -->
     <teleport to="body">
       <transition name="modal">
         <div v-if="showCreateDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showCreateDialog = false">
           <div class="fixed inset-0 bg-black/50" @click="showCreateDialog = false"></div>
           <div class="relative w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-dark-800">
             <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.clandes.addAccount') }}</h2>
-            <form class="space-y-4" @submit.prevent="doCreate">
+
+            <!-- Method selection -->
+            <div class="mb-4 flex gap-2">
+              <button type="button" class="btn btn-sm" :class="addMethod === 'oauth' ? 'btn-primary' : 'btn-secondary'" @click="addMethod = 'oauth'">
+                OAuth {{ t('admin.clandes.login') }}
+              </button>
+              <button type="button" class="btn btn-sm" :class="addMethod === 'apikey' ? 'btn-primary' : 'btn-secondary'" @click="addMethod = 'apikey'">
+                API Key
+              </button>
+            </div>
+
+            <!-- OAuth login -->
+            <div v-if="addMethod === 'oauth'" class="space-y-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('admin.clandes.oauthHint') }}</p>
+              <button type="button" class="btn btn-primary w-full" :disabled="oauthStarting" @click="doStartOAuth">
+                {{ oauthStarting ? t('common.loading') : t('admin.clandes.startOAuth') }}
+              </button>
+              <!-- OAuth callback input (shown after redirect) -->
+              <div v-if="oauthSessionId" class="space-y-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.clandes.oauthCodeHint') }}</p>
+                <input v-model="oauthCode" class="input w-full" :placeholder="t('admin.clandes.oauthCodePlaceholder')" />
+                <button type="button" class="btn btn-primary btn-sm w-full" :disabled="!oauthCode || oauthCompleting" @click="doCompleteOAuth">
+                  {{ oauthCompleting ? t('common.loading') : t('admin.clandes.completeOAuth') }}
+                </button>
+              </div>
+            </div>
+
+            <!-- API Key form -->
+            <form v-else class="space-y-4" @submit.prevent="doCreate">
               <div>
                 <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.clandes.accountName') }}</label>
                 <input v-model="createForm.name" class="input w-full" required />
               </div>
               <div>
-                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.clandes.accountType') }}</label>
-                <select v-model="createForm.type" class="input w-full">
-                  <option value="oauth">OAuth</option>
-                  <option value="setup-token">Setup Token</option>
-                  <option value="apikey">API Key</option>
-                </select>
+                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">API Key</label>
+                <input v-model="createForm.apiKey" class="input w-full" required />
               </div>
-
-              <!-- OAuth / Setup Token fields -->
-              <template v-if="createForm.type === 'oauth' || createForm.type === 'setup-token'">
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Access Token</label>
-                  <input v-model="createForm.accessToken" class="input w-full" required />
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Refresh Token</label>
-                  <input v-model="createForm.refreshToken" class="input w-full" />
-                </div>
-              </template>
-
-              <!-- API Key fields -->
-              <template v-if="createForm.type === 'apikey'">
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">API Key</label>
-                  <input v-model="createForm.apiKey" class="input w-full" required />
-                </div>
-                <div>
-                  <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Base URL</label>
-                  <input v-model="createForm.baseUrl" class="input w-full" placeholder="https://api.anthropic.com" />
-                </div>
-              </template>
-
+              <div>
+                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Base URL</label>
+                <input v-model="createForm.baseUrl" class="input w-full" placeholder="https://api.anthropic.com" />
+              </div>
               <div class="flex justify-end gap-2 pt-2">
                 <button type="button" class="btn btn-secondary btn-sm" @click="showCreateDialog = false">{{ t('common.cancel') }}</button>
                 <button type="submit" class="btn btn-primary btn-sm" :disabled="creating">
@@ -166,6 +170,10 @@
                 </button>
               </div>
             </form>
+
+            <div class="mt-4 flex justify-end">
+              <button type="button" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showCreateDialog = false">{{ t('common.close') }}</button>
+            </div>
           </div>
         </div>
       </transition>
@@ -192,12 +200,14 @@ const accountsLoading = ref(false)
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const deleting = ref<number | null>(null)
+const addMethod = ref<'oauth' | 'apikey'>('oauth')
+const oauthStarting = ref(false)
+const oauthSessionId = ref('')
+const oauthCode = ref('')
+const oauthCompleting = ref(false)
 
 const createForm = ref({
   name: '',
-  type: 'oauth' as 'oauth' | 'setup-token' | 'apikey',
-  accessToken: '',
-  refreshToken: '',
   apiKey: '',
   baseUrl: '',
 })
@@ -239,19 +249,45 @@ async function doSync() {
   }
 }
 
+async function doStartOAuth() {
+  oauthStarting.value = true
+  try {
+    const redirectUri = window.location.origin + '/admin/clandes'
+    const result = await adminAPI.clandes.startOAuth(redirectUri)
+    oauthSessionId.value = result.session_id
+    window.open(result.auth_url, '_blank')
+  } catch (e) {
+    appStore.showError((e as { message?: string })?.message ?? t('admin.clandes.oauthFailed'))
+  } finally {
+    oauthStarting.value = false
+  }
+}
+
+async function doCompleteOAuth() {
+  oauthCompleting.value = true
+  try {
+    const callbackUrl = window.location.origin + '/admin/clandes'
+    await adminAPI.clandes.completeOAuth(oauthSessionId.value, oauthCode.value, callbackUrl)
+    appStore.showSuccess(t('admin.clandes.createSuccess'))
+    showCreateDialog.value = false
+    oauthSessionId.value = ''
+    oauthCode.value = ''
+    await fetchAccounts()
+  } catch (e) {
+    appStore.showError((e as { message?: string })?.message ?? t('admin.clandes.oauthFailed'))
+  } finally {
+    oauthCompleting.value = false
+  }
+}
+
 async function doCreate() {
   creating.value = true
   try {
     const f = createForm.value
-    const credentials: Record<string, unknown> =
-      f.type === 'apikey'
-        ? { api_key: f.apiKey, base_url: f.baseUrl || undefined }
-        : { access_token: f.accessToken, refresh_token: f.refreshToken || undefined }
-
     const req: CreateClandesAccountRequest = {
       name: f.name,
-      type: f.type,
-      credentials,
+      type: 'apikey',
+      credentials: { api_key: f.apiKey, base_url: f.baseUrl || undefined },
     }
     await adminAPI.clandes.createAccount(req)
     appStore.showSuccess(t('admin.clandes.createSuccess'))
@@ -279,14 +315,10 @@ async function doDelete(id: number) {
 }
 
 function resetForm() {
-  createForm.value = {
-    name: '',
-    type: 'oauth',
-    accessToken: '',
-    refreshToken: '',
-    apiKey: '',
-    baseUrl: '',
-  }
+  createForm.value = { name: '', apiKey: '', baseUrl: '' }
+  addMethod.value = 'oauth'
+  oauthSessionId.value = ''
+  oauthCode.value = ''
 }
 
 onMounted(() => {

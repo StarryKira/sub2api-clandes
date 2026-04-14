@@ -5625,6 +5625,13 @@ export default {
       createFailed: 'Failed to create account',
       deleteSuccess: 'Account deleted',
       deleteFailed: 'Failed to delete account',
+      login: 'Login',
+      oauthHint: 'Login with your Claude account via OAuth. A new window will open for authentication.',
+      startOAuth: 'Login with Claude',
+      oauthCodeHint: 'After logging in, paste the authorization code below:',
+      oauthCodePlaceholder: 'Paste authorization code here',
+      completeOAuth: 'Complete Login',
+      oauthFailed: 'OAuth login failed',
     },
   },
 
