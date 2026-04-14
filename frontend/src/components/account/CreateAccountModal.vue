@@ -2399,6 +2399,36 @@
         </div>
       </div>
 
+      <!-- Clandes 专用开关 -->
+      <div
+        v-if="form.platform === 'anthropic'"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.clandes.toggle') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.clandes.toggleDesc') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="clandesExclusive = !clandesExclusive"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              clandesExclusive ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                clandesExclusive ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+
       <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
       <div
         v-if="form.platform === 'anthropic' && accountCategory === 'apikey' && webSearchGlobalEnabled"
@@ -3083,6 +3113,7 @@ const {
   loadGlobalState: loadQuotaNotifyGlobal,
   writeToExtra: writeQuotaNotifyToExtra,
 } = useQuotaNotifyState()
+const clandesExclusive = ref(false)
 
 // Load global feature states once
 adminAPI.settings.getWebSearchEmulationConfig().then(cfg => {
@@ -3802,6 +3833,7 @@ const resetForm = () => {
   codexCLIOnlyEnabled.value = false
   anthropicPassthroughEnabled.value = false
   webSearchEmulationMode.value = 'default'
+  clandesExclusive.value = false
   // Reset quota control state
   windowCostEnabled.value = false
   windowCostLimit.value = null
@@ -3879,15 +3911,18 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
 }
 
 const buildAnthropicExtra = (base?: Record<string, unknown>): Record<string, unknown> | undefined => {
-  if (form.platform !== 'anthropic' || accountCategory.value !== 'apikey') {
-    return base
+  const extra: Record<string, unknown> = { ...(base || {}) }
+
+  if (form.platform === 'anthropic' && clandesExclusive.value) {
+    extra.clandes = true
   }
 
-  const extra: Record<string, unknown> = { ...(base || {}) }
-  if (anthropicPassthroughEnabled.value) {
-    extra.anthropic_passthrough = true
-  } else {
-    delete extra.anthropic_passthrough
+  if (form.platform === 'anthropic' && accountCategory.value === 'apikey') {
+    if (anthropicPassthroughEnabled.value) {
+      extra.anthropic_passthrough = true
+    } else {
+      delete extra.anthropic_passthrough
+    }
   }
   if (webSearchEmulationMode.value === 'default') {
     delete extra.web_search_emulation
