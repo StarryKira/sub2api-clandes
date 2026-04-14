@@ -111,6 +111,17 @@ func registerAccountToClandes(ctx context.Context, svc proto.AccountService, acc
 	return nil
 }
 
+// RegisterSingleAccountToClandes registers one account to clandes.
+// Used when creating a new clandes account from the admin UI.
+func RegisterSingleAccountToClandes(ctx context.Context, client *ClandesClient, acc *Account) error {
+	svc, err := client.AccountService()
+	if err != nil {
+		return fmt.Errorf("clandes: get AccountService: %w", err)
+	}
+	defer svc.Release()
+	return registerAccountToClandes(ctx, svc, acc)
+}
+
 // RemoveAccountFromClandes removes an account from clandes when it is deleted in sub2api.
 func RemoveAccountFromClandes(ctx context.Context, client *ClandesClient, accountID int64) error {
 	svc, err := client.AccountService()

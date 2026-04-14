@@ -572,5 +572,8 @@ func registerClandesRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		clandes.GET("/status", h.Admin.Clandes.GetStatus)
 		clandes.POST("/sync", h.Admin.Clandes.SyncAccounts)
+		clandes.GET("/accounts", h.Admin.Clandes.ListAccounts)
+		clandes.POST("/accounts", h.Admin.Clandes.CreateAccount)
+		clandes.DELETE("/accounts/:id", h.Admin.Clandes.DeleteAccount)
 	}
 }
