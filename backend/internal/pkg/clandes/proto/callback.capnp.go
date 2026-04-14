@@ -507,6 +507,14 @@ func (s RouteResult_routed) SetThinkingLevelOverride(v ThinkingLevelOverride) {
 	capnp.Struct(s).SetUint16(0, uint16(v))
 }
 
+func (s RouteResult_routed) SkipBillingCheck() bool {
+	return capnp.Struct(s).Bit(32)
+}
+
+func (s RouteResult_routed) SetSkipBillingCheck(v bool) {
+	capnp.Struct(s).SetBit(32, v)
+}
+
 func (s RouteResult) Rejected() RouteResult_rejected { return RouteResult_rejected(s) }
 
 func (s RouteResult) SetRejected() {
@@ -1705,32 +1713,32 @@ func (f Router_onAccountEvent_Results_Future) Struct() (Router_onAccountEvent_Re
 	return Router_onAccountEvent_Results(p.Struct()), err
 }
 
-type CallbackService capnp.Client
+type PolicyService capnp.Client
 
-// CallbackService_TypeID is the unique identifier for the type CallbackService.
-const CallbackService_TypeID = 0x8a8b305d6b45ffa0
+// PolicyService_TypeID is the unique identifier for the type PolicyService.
+const PolicyService_TypeID = 0x97f64db20802dd92
 
-func (c CallbackService) Connect(ctx context.Context, params func(CallbackService_connect_Params) error) (CallbackService_connect_Results_Future, capnp.ReleaseFunc) {
+func (c PolicyService) Connect(ctx context.Context, params func(PolicyService_connect_Params) error) (PolicyService_connect_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0x8a8b305d6b45ffa0,
+			InterfaceID:   0x97f64db20802dd92,
 			MethodID:      0,
-			InterfaceName: "callback.capnp:CallbackService",
+			InterfaceName: "callback.capnp:PolicyService",
 			MethodName:    "connect",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(CallbackService_connect_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(PolicyService_connect_Params(s)) }
 	}
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return CallbackService_connect_Results_Future{Future: ans.Future()}, release
+	return PolicyService_connect_Results_Future{Future: ans.Future()}, release
 
 }
 
-func (c CallbackService) WaitStreaming() error {
+func (c PolicyService) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
 
@@ -1738,14 +1746,14 @@ func (c CallbackService) WaitStreaming() error {
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c CallbackService) String() string {
-	return "CallbackService(" + capnp.Client(c).String() + ")"
+func (c PolicyService) String() string {
+	return "PolicyService(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c CallbackService) AddRef() CallbackService {
-	return CallbackService(capnp.Client(c).AddRef())
+func (c PolicyService) AddRef() PolicyService {
+	return PolicyService(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -1754,28 +1762,28 @@ func (c CallbackService) AddRef() CallbackService {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c CallbackService) Release() {
+func (c PolicyService) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c CallbackService) Resolve(ctx context.Context) error {
+func (c PolicyService) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c CallbackService) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c PolicyService) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (CallbackService) DecodeFromPtr(p capnp.Ptr) CallbackService {
-	return CallbackService(capnp.Client{}.DecodeFromPtr(p))
+func (PolicyService) DecodeFromPtr(p capnp.Ptr) PolicyService {
+	return PolicyService(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c CallbackService) IsValid() bool {
+func (c PolicyService) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -1783,7 +1791,7 @@ func (c CallbackService) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c CallbackService) IsSame(other CallbackService) bool {
+func (c PolicyService) IsSame(other PolicyService) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -1791,138 +1799,138 @@ func (c CallbackService) IsSame(other CallbackService) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c CallbackService) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c PolicyService) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c CallbackService) GetFlowLimiter() fc.FlowLimiter {
+func (c PolicyService) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 }
 
-// A CallbackService_Server is a CallbackService with a local implementation.
-type CallbackService_Server interface {
-	Connect(context.Context, CallbackService_connect) error
+// A PolicyService_Server is a PolicyService with a local implementation.
+type PolicyService_Server interface {
+	Connect(context.Context, PolicyService_connect) error
 }
 
-// CallbackService_NewServer creates a new Server from an implementation of CallbackService_Server.
-func CallbackService_NewServer(s CallbackService_Server) *server.Server {
+// PolicyService_NewServer creates a new Server from an implementation of PolicyService_Server.
+func PolicyService_NewServer(s PolicyService_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(CallbackService_Methods(nil, s), s, c)
+	return server.New(PolicyService_Methods(nil, s), s, c)
 }
 
-// CallbackService_ServerToClient creates a new Client from an implementation of CallbackService_Server.
+// PolicyService_ServerToClient creates a new Client from an implementation of PolicyService_Server.
 // The caller is responsible for calling Release on the returned Client.
-func CallbackService_ServerToClient(s CallbackService_Server) CallbackService {
-	return CallbackService(capnp.NewClient(CallbackService_NewServer(s)))
+func PolicyService_ServerToClient(s PolicyService_Server) PolicyService {
+	return PolicyService(capnp.NewClient(PolicyService_NewServer(s)))
 }
 
-// CallbackService_Methods appends Methods to a slice that invoke the methods on s.
+// PolicyService_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func CallbackService_Methods(methods []server.Method, s CallbackService_Server) []server.Method {
+func PolicyService_Methods(methods []server.Method, s PolicyService_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0x8a8b305d6b45ffa0,
+			InterfaceID:   0x97f64db20802dd92,
 			MethodID:      0,
-			InterfaceName: "callback.capnp:CallbackService",
+			InterfaceName: "callback.capnp:PolicyService",
 			MethodName:    "connect",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Connect(ctx, CallbackService_connect{call})
+			return s.Connect(ctx, PolicyService_connect{call})
 		},
 	})
 
 	return methods
 }
 
-// CallbackService_connect holds the state for a server call to CallbackService.connect.
+// PolicyService_connect holds the state for a server call to PolicyService.connect.
 // See server.Call for documentation.
-type CallbackService_connect struct {
+type PolicyService_connect struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c CallbackService_connect) Args() CallbackService_connect_Params {
-	return CallbackService_connect_Params(c.Call.Args())
+func (c PolicyService_connect) Args() PolicyService_connect_Params {
+	return PolicyService_connect_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c CallbackService_connect) AllocResults() (CallbackService_connect_Results, error) {
+func (c PolicyService_connect) AllocResults() (PolicyService_connect_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return CallbackService_connect_Results(r), err
+	return PolicyService_connect_Results(r), err
 }
 
-// CallbackService_List is a list of CallbackService.
-type CallbackService_List = capnp.CapList[CallbackService]
+// PolicyService_List is a list of PolicyService.
+type PolicyService_List = capnp.CapList[PolicyService]
 
-// NewCallbackService_List creates a new list of CallbackService.
-func NewCallbackService_List(s *capnp.Segment, sz int32) (CallbackService_List, error) {
+// NewPolicyService_List creates a new list of PolicyService.
+func NewPolicyService_List(s *capnp.Segment, sz int32) (PolicyService_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[CallbackService](l), err
+	return capnp.CapList[PolicyService](l), err
 }
 
-type CallbackService_connect_Params capnp.Struct
+type PolicyService_connect_Params capnp.Struct
 
-// CallbackService_connect_Params_TypeID is the unique identifier for the type CallbackService_connect_Params.
-const CallbackService_connect_Params_TypeID = 0x90668c35e710be1b
+// PolicyService_connect_Params_TypeID is the unique identifier for the type PolicyService_connect_Params.
+const PolicyService_connect_Params_TypeID = 0xf511d1824261c2a3
 
-func NewCallbackService_connect_Params(s *capnp.Segment) (CallbackService_connect_Params, error) {
+func NewPolicyService_connect_Params(s *capnp.Segment) (PolicyService_connect_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return CallbackService_connect_Params(st), err
+	return PolicyService_connect_Params(st), err
 }
 
-func NewRootCallbackService_connect_Params(s *capnp.Segment) (CallbackService_connect_Params, error) {
+func NewRootPolicyService_connect_Params(s *capnp.Segment) (PolicyService_connect_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return CallbackService_connect_Params(st), err
+	return PolicyService_connect_Params(st), err
 }
 
-func ReadRootCallbackService_connect_Params(msg *capnp.Message) (CallbackService_connect_Params, error) {
+func ReadRootPolicyService_connect_Params(msg *capnp.Message) (PolicyService_connect_Params, error) {
 	root, err := msg.Root()
-	return CallbackService_connect_Params(root.Struct()), err
+	return PolicyService_connect_Params(root.Struct()), err
 }
 
-func (s CallbackService_connect_Params) String() string {
-	str, _ := text.Marshal(0x90668c35e710be1b, capnp.Struct(s))
+func (s PolicyService_connect_Params) String() string {
+	str, _ := text.Marshal(0xf511d1824261c2a3, capnp.Struct(s))
 	return str
 }
 
-func (s CallbackService_connect_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s PolicyService_connect_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (CallbackService_connect_Params) DecodeFromPtr(p capnp.Ptr) CallbackService_connect_Params {
-	return CallbackService_connect_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (PolicyService_connect_Params) DecodeFromPtr(p capnp.Ptr) PolicyService_connect_Params {
+	return PolicyService_connect_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s CallbackService_connect_Params) ToPtr() capnp.Ptr {
+func (s PolicyService_connect_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s CallbackService_connect_Params) IsValid() bool {
+func (s PolicyService_connect_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s CallbackService_connect_Params) Message() *capnp.Message {
+func (s PolicyService_connect_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s CallbackService_connect_Params) Segment() *capnp.Segment {
+func (s PolicyService_connect_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s CallbackService_connect_Params) Router() Router {
+func (s PolicyService_connect_Params) Router() Router {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Router(p.Interface().Client())
 }
 
-func (s CallbackService_connect_Params) HasRouter() bool {
+func (s PolicyService_connect_Params) HasRouter() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s CallbackService_connect_Params) SetRouter(v Router) error {
+func (s PolicyService_connect_Params) SetRouter(v Router) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1931,87 +1939,87 @@ func (s CallbackService_connect_Params) SetRouter(v Router) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// CallbackService_connect_Params_List is a list of CallbackService_connect_Params.
-type CallbackService_connect_Params_List = capnp.StructList[CallbackService_connect_Params]
+// PolicyService_connect_Params_List is a list of PolicyService_connect_Params.
+type PolicyService_connect_Params_List = capnp.StructList[PolicyService_connect_Params]
 
-// NewCallbackService_connect_Params creates a new list of CallbackService_connect_Params.
-func NewCallbackService_connect_Params_List(s *capnp.Segment, sz int32) (CallbackService_connect_Params_List, error) {
+// NewPolicyService_connect_Params creates a new list of PolicyService_connect_Params.
+func NewPolicyService_connect_Params_List(s *capnp.Segment, sz int32) (PolicyService_connect_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[CallbackService_connect_Params](l), err
+	return capnp.StructList[PolicyService_connect_Params](l), err
 }
 
-// CallbackService_connect_Params_Future is a wrapper for a CallbackService_connect_Params promised by a client call.
-type CallbackService_connect_Params_Future struct{ *capnp.Future }
+// PolicyService_connect_Params_Future is a wrapper for a PolicyService_connect_Params promised by a client call.
+type PolicyService_connect_Params_Future struct{ *capnp.Future }
 
-func (f CallbackService_connect_Params_Future) Struct() (CallbackService_connect_Params, error) {
+func (f PolicyService_connect_Params_Future) Struct() (PolicyService_connect_Params, error) {
 	p, err := f.Future.Ptr()
-	return CallbackService_connect_Params(p.Struct()), err
+	return PolicyService_connect_Params(p.Struct()), err
 }
-func (p CallbackService_connect_Params_Future) Router() Router {
+func (p PolicyService_connect_Params_Future) Router() Router {
 	return Router(p.Future.Field(0, nil).Client())
 }
 
-type CallbackService_connect_Results capnp.Struct
+type PolicyService_connect_Results capnp.Struct
 
-// CallbackService_connect_Results_TypeID is the unique identifier for the type CallbackService_connect_Results.
-const CallbackService_connect_Results_TypeID = 0xce0a81af54d091c8
+// PolicyService_connect_Results_TypeID is the unique identifier for the type PolicyService_connect_Results.
+const PolicyService_connect_Results_TypeID = 0xe3fb4d1d7a312c49
 
-func NewCallbackService_connect_Results(s *capnp.Segment) (CallbackService_connect_Results, error) {
+func NewPolicyService_connect_Results(s *capnp.Segment) (PolicyService_connect_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return CallbackService_connect_Results(st), err
+	return PolicyService_connect_Results(st), err
 }
 
-func NewRootCallbackService_connect_Results(s *capnp.Segment) (CallbackService_connect_Results, error) {
+func NewRootPolicyService_connect_Results(s *capnp.Segment) (PolicyService_connect_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return CallbackService_connect_Results(st), err
+	return PolicyService_connect_Results(st), err
 }
 
-func ReadRootCallbackService_connect_Results(msg *capnp.Message) (CallbackService_connect_Results, error) {
+func ReadRootPolicyService_connect_Results(msg *capnp.Message) (PolicyService_connect_Results, error) {
 	root, err := msg.Root()
-	return CallbackService_connect_Results(root.Struct()), err
+	return PolicyService_connect_Results(root.Struct()), err
 }
 
-func (s CallbackService_connect_Results) String() string {
-	str, _ := text.Marshal(0xce0a81af54d091c8, capnp.Struct(s))
+func (s PolicyService_connect_Results) String() string {
+	str, _ := text.Marshal(0xe3fb4d1d7a312c49, capnp.Struct(s))
 	return str
 }
 
-func (s CallbackService_connect_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s PolicyService_connect_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (CallbackService_connect_Results) DecodeFromPtr(p capnp.Ptr) CallbackService_connect_Results {
-	return CallbackService_connect_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (PolicyService_connect_Results) DecodeFromPtr(p capnp.Ptr) PolicyService_connect_Results {
+	return PolicyService_connect_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s CallbackService_connect_Results) ToPtr() capnp.Ptr {
+func (s PolicyService_connect_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s CallbackService_connect_Results) IsValid() bool {
+func (s PolicyService_connect_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s CallbackService_connect_Results) Message() *capnp.Message {
+func (s PolicyService_connect_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s CallbackService_connect_Results) Segment() *capnp.Segment {
+func (s PolicyService_connect_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// CallbackService_connect_Results_List is a list of CallbackService_connect_Results.
-type CallbackService_connect_Results_List = capnp.StructList[CallbackService_connect_Results]
+// PolicyService_connect_Results_List is a list of PolicyService_connect_Results.
+type PolicyService_connect_Results_List = capnp.StructList[PolicyService_connect_Results]
 
-// NewCallbackService_connect_Results creates a new list of CallbackService_connect_Results.
-func NewCallbackService_connect_Results_List(s *capnp.Segment, sz int32) (CallbackService_connect_Results_List, error) {
+// NewPolicyService_connect_Results creates a new list of PolicyService_connect_Results.
+func NewPolicyService_connect_Results_List(s *capnp.Segment, sz int32) (PolicyService_connect_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[CallbackService_connect_Results](l), err
+	return capnp.StructList[PolicyService_connect_Results](l), err
 }
 
-// CallbackService_connect_Results_Future is a wrapper for a CallbackService_connect_Results promised by a client call.
-type CallbackService_connect_Results_Future struct{ *capnp.Future }
+// PolicyService_connect_Results_Future is a wrapper for a PolicyService_connect_Results promised by a client call.
+type PolicyService_connect_Results_Future struct{ *capnp.Future }
 
-func (f CallbackService_connect_Results_Future) Struct() (CallbackService_connect_Results, error) {
+func (f PolicyService_connect_Results_Future) Struct() (PolicyService_connect_Results, error) {
 	p, err := f.Future.Ptr()
-	return CallbackService_connect_Results(p.Struct()), err
+	return PolicyService_connect_Results(p.Struct()), err
 }

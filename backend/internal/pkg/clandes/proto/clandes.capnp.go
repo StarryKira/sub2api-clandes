@@ -423,23 +423,23 @@ func (c ClandesService) ProxyService(ctx context.Context, params func(ClandesSer
 
 }
 
-func (c ClandesService) CallbackService(ctx context.Context, params func(ClandesService_callbackService_Params) error) (ClandesService_callbackService_Results_Future, capnp.ReleaseFunc) {
+func (c ClandesService) PolicyService(ctx context.Context, params func(ClandesService_policyService_Params) error) (ClandesService_policyService_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xc2b6e8aae63a6302,
 			MethodID:      4,
 			InterfaceName: "clandes.capnp:ClandesService",
-			MethodName:    "callbackService",
+			MethodName:    "policyService",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(ClandesService_callbackService_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(ClandesService_policyService_Params(s)) }
 	}
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return ClandesService_callbackService_Results_Future{Future: ans.Future()}, release
+	return ClandesService_policyService_Results_Future{Future: ans.Future()}, release
 
 }
 
@@ -524,7 +524,7 @@ type ClandesService_Server interface {
 
 	ProxyService(context.Context, ClandesService_proxyService) error
 
-	CallbackService(context.Context, ClandesService_callbackService) error
+	PolicyService(context.Context, ClandesService_policyService) error
 }
 
 // ClandesService_NewServer creates a new Server from an implementation of ClandesService_Server.
@@ -599,10 +599,10 @@ func ClandesService_Methods(methods []server.Method, s ClandesService_Server) []
 			InterfaceID:   0xc2b6e8aae63a6302,
 			MethodID:      4,
 			InterfaceName: "clandes.capnp:ClandesService",
-			MethodName:    "callbackService",
+			MethodName:    "policyService",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.CallbackService(ctx, ClandesService_callbackService{call})
+			return s.PolicyService(ctx, ClandesService_policyService{call})
 		},
 	})
 
@@ -677,21 +677,21 @@ func (c ClandesService_proxyService) AllocResults() (ClandesService_proxyService
 	return ClandesService_proxyService_Results(r), err
 }
 
-// ClandesService_callbackService holds the state for a server call to ClandesService.callbackService.
+// ClandesService_policyService holds the state for a server call to ClandesService.policyService.
 // See server.Call for documentation.
-type ClandesService_callbackService struct {
+type ClandesService_policyService struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c ClandesService_callbackService) Args() ClandesService_callbackService_Params {
-	return ClandesService_callbackService_Params(c.Call.Args())
+func (c ClandesService_policyService) Args() ClandesService_policyService_Params {
+	return ClandesService_policyService_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c ClandesService_callbackService) AllocResults() (ClandesService_callbackService_Results, error) {
+func (c ClandesService_policyService) AllocResults() (ClandesService_policyService_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ClandesService_callbackService_Results(r), err
+	return ClandesService_policyService_Results(r), err
 }
 
 // ClandesService_List is a list of ClandesService.
@@ -1303,128 +1303,128 @@ func (p ClandesService_proxyService_Results_Future) Svc() ProxyService {
 	return ProxyService(p.Future.Field(0, nil).Client())
 }
 
-type ClandesService_callbackService_Params capnp.Struct
+type ClandesService_policyService_Params capnp.Struct
 
-// ClandesService_callbackService_Params_TypeID is the unique identifier for the type ClandesService_callbackService_Params.
-const ClandesService_callbackService_Params_TypeID = 0xcb99a7f2d8d84d46
+// ClandesService_policyService_Params_TypeID is the unique identifier for the type ClandesService_policyService_Params.
+const ClandesService_policyService_Params_TypeID = 0xcb99a7f2d8d84d46
 
-func NewClandesService_callbackService_Params(s *capnp.Segment) (ClandesService_callbackService_Params, error) {
+func NewClandesService_policyService_Params(s *capnp.Segment) (ClandesService_policyService_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ClandesService_callbackService_Params(st), err
+	return ClandesService_policyService_Params(st), err
 }
 
-func NewRootClandesService_callbackService_Params(s *capnp.Segment) (ClandesService_callbackService_Params, error) {
+func NewRootClandesService_policyService_Params(s *capnp.Segment) (ClandesService_policyService_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ClandesService_callbackService_Params(st), err
+	return ClandesService_policyService_Params(st), err
 }
 
-func ReadRootClandesService_callbackService_Params(msg *capnp.Message) (ClandesService_callbackService_Params, error) {
+func ReadRootClandesService_policyService_Params(msg *capnp.Message) (ClandesService_policyService_Params, error) {
 	root, err := msg.Root()
-	return ClandesService_callbackService_Params(root.Struct()), err
+	return ClandesService_policyService_Params(root.Struct()), err
 }
 
-func (s ClandesService_callbackService_Params) String() string {
+func (s ClandesService_policyService_Params) String() string {
 	str, _ := text.Marshal(0xcb99a7f2d8d84d46, capnp.Struct(s))
 	return str
 }
 
-func (s ClandesService_callbackService_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ClandesService_policyService_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ClandesService_callbackService_Params) DecodeFromPtr(p capnp.Ptr) ClandesService_callbackService_Params {
-	return ClandesService_callbackService_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (ClandesService_policyService_Params) DecodeFromPtr(p capnp.Ptr) ClandesService_policyService_Params {
+	return ClandesService_policyService_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ClandesService_callbackService_Params) ToPtr() capnp.Ptr {
+func (s ClandesService_policyService_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ClandesService_callbackService_Params) IsValid() bool {
+func (s ClandesService_policyService_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ClandesService_callbackService_Params) Message() *capnp.Message {
+func (s ClandesService_policyService_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ClandesService_callbackService_Params) Segment() *capnp.Segment {
+func (s ClandesService_policyService_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// ClandesService_callbackService_Params_List is a list of ClandesService_callbackService_Params.
-type ClandesService_callbackService_Params_List = capnp.StructList[ClandesService_callbackService_Params]
+// ClandesService_policyService_Params_List is a list of ClandesService_policyService_Params.
+type ClandesService_policyService_Params_List = capnp.StructList[ClandesService_policyService_Params]
 
-// NewClandesService_callbackService_Params creates a new list of ClandesService_callbackService_Params.
-func NewClandesService_callbackService_Params_List(s *capnp.Segment, sz int32) (ClandesService_callbackService_Params_List, error) {
+// NewClandesService_policyService_Params creates a new list of ClandesService_policyService_Params.
+func NewClandesService_policyService_Params_List(s *capnp.Segment, sz int32) (ClandesService_policyService_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[ClandesService_callbackService_Params](l), err
+	return capnp.StructList[ClandesService_policyService_Params](l), err
 }
 
-// ClandesService_callbackService_Params_Future is a wrapper for a ClandesService_callbackService_Params promised by a client call.
-type ClandesService_callbackService_Params_Future struct{ *capnp.Future }
+// ClandesService_policyService_Params_Future is a wrapper for a ClandesService_policyService_Params promised by a client call.
+type ClandesService_policyService_Params_Future struct{ *capnp.Future }
 
-func (f ClandesService_callbackService_Params_Future) Struct() (ClandesService_callbackService_Params, error) {
+func (f ClandesService_policyService_Params_Future) Struct() (ClandesService_policyService_Params, error) {
 	p, err := f.Future.Ptr()
-	return ClandesService_callbackService_Params(p.Struct()), err
+	return ClandesService_policyService_Params(p.Struct()), err
 }
 
-type ClandesService_callbackService_Results capnp.Struct
+type ClandesService_policyService_Results capnp.Struct
 
-// ClandesService_callbackService_Results_TypeID is the unique identifier for the type ClandesService_callbackService_Results.
-const ClandesService_callbackService_Results_TypeID = 0xd460053f494a559d
+// ClandesService_policyService_Results_TypeID is the unique identifier for the type ClandesService_policyService_Results.
+const ClandesService_policyService_Results_TypeID = 0xd460053f494a559d
 
-func NewClandesService_callbackService_Results(s *capnp.Segment) (ClandesService_callbackService_Results, error) {
+func NewClandesService_policyService_Results(s *capnp.Segment) (ClandesService_policyService_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ClandesService_callbackService_Results(st), err
+	return ClandesService_policyService_Results(st), err
 }
 
-func NewRootClandesService_callbackService_Results(s *capnp.Segment) (ClandesService_callbackService_Results, error) {
+func NewRootClandesService_policyService_Results(s *capnp.Segment) (ClandesService_policyService_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ClandesService_callbackService_Results(st), err
+	return ClandesService_policyService_Results(st), err
 }
 
-func ReadRootClandesService_callbackService_Results(msg *capnp.Message) (ClandesService_callbackService_Results, error) {
+func ReadRootClandesService_policyService_Results(msg *capnp.Message) (ClandesService_policyService_Results, error) {
 	root, err := msg.Root()
-	return ClandesService_callbackService_Results(root.Struct()), err
+	return ClandesService_policyService_Results(root.Struct()), err
 }
 
-func (s ClandesService_callbackService_Results) String() string {
+func (s ClandesService_policyService_Results) String() string {
 	str, _ := text.Marshal(0xd460053f494a559d, capnp.Struct(s))
 	return str
 }
 
-func (s ClandesService_callbackService_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ClandesService_policyService_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ClandesService_callbackService_Results) DecodeFromPtr(p capnp.Ptr) ClandesService_callbackService_Results {
-	return ClandesService_callbackService_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (ClandesService_policyService_Results) DecodeFromPtr(p capnp.Ptr) ClandesService_policyService_Results {
+	return ClandesService_policyService_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ClandesService_callbackService_Results) ToPtr() capnp.Ptr {
+func (s ClandesService_policyService_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ClandesService_callbackService_Results) IsValid() bool {
+func (s ClandesService_policyService_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ClandesService_callbackService_Results) Message() *capnp.Message {
+func (s ClandesService_policyService_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ClandesService_callbackService_Results) Segment() *capnp.Segment {
+func (s ClandesService_policyService_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s ClandesService_callbackService_Results) Svc() CallbackService {
+func (s ClandesService_policyService_Results) Svc() PolicyService {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return CallbackService(p.Interface().Client())
+	return PolicyService(p.Interface().Client())
 }
 
-func (s ClandesService_callbackService_Results) HasSvc() bool {
+func (s ClandesService_policyService_Results) HasSvc() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s ClandesService_callbackService_Results) SetSvc(v CallbackService) error {
+func (s ClandesService_policyService_Results) SetSvc(v PolicyService) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1433,22 +1433,22 @@ func (s ClandesService_callbackService_Results) SetSvc(v CallbackService) error 
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// ClandesService_callbackService_Results_List is a list of ClandesService_callbackService_Results.
-type ClandesService_callbackService_Results_List = capnp.StructList[ClandesService_callbackService_Results]
+// ClandesService_policyService_Results_List is a list of ClandesService_policyService_Results.
+type ClandesService_policyService_Results_List = capnp.StructList[ClandesService_policyService_Results]
 
-// NewClandesService_callbackService_Results creates a new list of ClandesService_callbackService_Results.
-func NewClandesService_callbackService_Results_List(s *capnp.Segment, sz int32) (ClandesService_callbackService_Results_List, error) {
+// NewClandesService_policyService_Results creates a new list of ClandesService_policyService_Results.
+func NewClandesService_policyService_Results_List(s *capnp.Segment, sz int32) (ClandesService_policyService_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[ClandesService_callbackService_Results](l), err
+	return capnp.StructList[ClandesService_policyService_Results](l), err
 }
 
-// ClandesService_callbackService_Results_Future is a wrapper for a ClandesService_callbackService_Results promised by a client call.
-type ClandesService_callbackService_Results_Future struct{ *capnp.Future }
+// ClandesService_policyService_Results_Future is a wrapper for a ClandesService_policyService_Results promised by a client call.
+type ClandesService_policyService_Results_Future struct{ *capnp.Future }
 
-func (f ClandesService_callbackService_Results_Future) Struct() (ClandesService_callbackService_Results, error) {
+func (f ClandesService_policyService_Results_Future) Struct() (ClandesService_policyService_Results, error) {
 	p, err := f.Future.Ptr()
-	return ClandesService_callbackService_Results(p.Struct()), err
+	return ClandesService_policyService_Results(p.Struct()), err
 }
-func (p ClandesService_callbackService_Results_Future) Svc() CallbackService {
-	return CallbackService(p.Future.Field(0, nil).Client())
+func (p ClandesService_policyService_Results_Future) Svc() PolicyService {
+	return PolicyService(p.Future.Field(0, nil).Client())
 }

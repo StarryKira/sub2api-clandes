@@ -19,7 +19,7 @@ import (
 // It handles:
 //   - Connecting and authenticating via Bootstrap.auth()
 //   - Syncing accounts from sub2api to clandes via AccountService
-//   - Registering the billing Router callback via CallbackService
+//   - Registering the billing Router callback via PolicyService
 //   - Automatic reconnection on disconnect
 type ClandesClient struct {
 	addr              string
@@ -30,7 +30,7 @@ type ClandesClient struct {
 	conn        *rpc.Conn
 	service     proto.ClandesService
 	accountSvc  proto.AccountService
-	callbackSvc proto.CallbackService
+	policySvc proto.PolicyService
 
 	routerImpl *clandesRouterImpl // owns the Router server capability
 	reqCache   *clandesRequestCache
@@ -182,14 +182,14 @@ func (c *ClandesClient) connect(ctx context.Context) error {
 	}
 	c.accountSvc = acctRes.Svc().AddRef()
 
-	// Get CallbackService sub-capability
-	cbFut, cbRel := c.service.CallbackService(ctx, nil)
+	// Get PolicyService sub-capability
+	cbFut, cbRel := c.service.PolicyService(ctx, nil)
 	defer cbRel()
 	cbRes, err := cbFut.Struct()
 	if err != nil {
-		return fmt.Errorf("clandes: get CallbackService: %w", err)
+		return fmt.Errorf("clandes: get PolicyService: %w", err)
 	}
-	c.callbackSvc = cbRes.Svc().AddRef()
+	c.policySvc = cbRes.Svc().AddRef()
 
 	logger.L().Info("clandes: connected", zap.String("addr", c.addr))
 	return nil
@@ -204,14 +204,14 @@ func (c *ClandesClient) registerCallback(ctx context.Context) error {
 	routerClient := proto.Router_ServerToClient(c.routerImpl)
 
 	// Register with clandes
-	connFut, rel := c.callbackSvc.Connect(ctx, func(p proto.CallbackService_connect_Params) error {
+	connFut, rel := c.policySvc.Connect(ctx, func(p proto.PolicyService_connect_Params) error {
 		p.SetRouter(routerClient)
 		return nil
 	})
 	defer rel()
 
 	if _, err := connFut.Struct(); err != nil {
-		return fmt.Errorf("clandes: CallbackService.connect: %w", err)
+		return fmt.Errorf("clandes: PolicyService.connect: %w", err)
 	}
 	logger.L().Info("clandes: Router callback registered")
 	return nil
@@ -253,9 +253,9 @@ func (c *ClandesClient) releaseCapabilities() {
 		c.accountSvc.Release()
 		c.accountSvc = proto.AccountService{}
 	}
-	if c.callbackSvc.IsValid() {
-		c.callbackSvc.Release()
-		c.callbackSvc = proto.CallbackService{}
+	if c.policySvc.IsValid() {
+		c.policySvc.Release()
+		c.policySvc = proto.PolicyService{}
 	}
 	if c.service.IsValid() {
 		c.service.Release()

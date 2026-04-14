@@ -41,6 +41,8 @@ struct RouteResult {
       accountId             @0 :Text;
       modelOverride         @1 :Text;
       thinkingLevelOverride @2 :ThinkingLevelOverride;
+      # true 时代理端跳过 billing header suffix 哈希校验；适用于非 Claude Code 原生客户端
+      skipBillingCheck      @5 :Bool;
     }
     rejected :group {
       statusCode @3 :UInt16;
@@ -72,7 +74,7 @@ interface Router {
   onAccountEvent @3 (accountId :Text, kind :AccountEventKind) -> ();
 }
 
-interface CallbackService {
+interface PolicyService {
   # 决策端注册自己的 Router capability 到代理端
   connect @0 (router :Router) -> ();
 }

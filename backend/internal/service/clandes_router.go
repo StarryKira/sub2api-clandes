@@ -130,10 +130,14 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 		return err
 	}
 	result.SetRouted()
-	if err := result.Routed().SetAccountId(strconv.FormatInt(account.ID, 10)); err != nil {
+	routed := result.Routed()
+	if err := routed.SetAccountId(strconv.FormatInt(account.ID, 10)); err != nil {
 		return err
 	}
-	result.Routed().SetThinkingLevelOverride(proto.ThinkingLevelOverride_noOverride)
+	routed.SetThinkingLevelOverride(proto.ThinkingLevelOverride_noOverride)
+	// Non-Claude-Code clients can't produce the correct billing header hash;
+	// tell the proxy to skip that check.
+	routed.SetSkipBillingCheck(!claudeCodeUAPattern.MatchString(userAgent))
 	return nil
 }
 

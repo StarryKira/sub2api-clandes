@@ -8,7 +8,7 @@ using Account  = import "account.capnp";
 using Auth     = import "claude_auth.capnp";
 using Query    = import "claude_query.capnp";
 using Proxy    = import "proxy.capnp";
-using Callback = import "callback.capnp";
+using Policy = import "callback.capnp";
 
 # 根 capability：客户端连接后先调用 auth 拿到 ClandesService
 interface Bootstrap {
@@ -21,5 +21,5 @@ interface ClandesService {
   claudeAuthService @1 () -> (svc :Auth.ClaudeAuthService);
   claudeQueryService @2 () -> (svc :Query.ClaudeQueryService);
   proxyService      @3 () -> (svc :Proxy.ProxyService);
-  callbackService   @4 () -> (svc :Callback.CallbackService);
+  policyService     @4 () -> (svc :Policy.PolicyService);
 }
