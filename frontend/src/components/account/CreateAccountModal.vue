@@ -2590,8 +2590,8 @@
         :show-help="form.platform === 'anthropic'"
         :show-proxy-warning="form.platform !== 'openai' && !!form.proxy_id"
         :allow-multiple="form.platform === 'anthropic'"
-        :show-cookie-option="form.platform === 'anthropic'"
-        :show-refresh-token-option="form.platform === 'openai' || form.platform === 'antigravity'"
+        :show-cookie-option="form.platform === 'anthropic' && !clandesExclusive"
+        :show-refresh-token-option="(form.platform === 'openai' || form.platform === 'antigravity') && !clandesExclusive"
         :show-mobile-refresh-token-option="form.platform === 'openai'"
         :show-session-token-option="false"
         :show-access-token-option="false"
@@ -4171,6 +4171,21 @@ const handleGenerateUrl = async () => {
     )
   } else if (form.platform === 'antigravity') {
     await antigravityOAuth.generateAuthUrl(form.proxy_id)
+  } else if (clandesExclusive.value) {
+    // Clandes: generate auth URL via clandes RPC
+    oauth.loading.value = true
+    oauth.error.value = ''
+    try {
+      const redirectUri = window.location.origin + '/admin/accounts'
+      const result = await adminAPI.clandes.startOAuth(redirectUri, form.proxy_id)
+      oauth.authUrl.value = result.auth_url
+      oauth.sessionId.value = result.session_id
+    } catch (err: any) {
+      oauth.error.value = err.response?.data?.detail || 'Failed to generate auth URL via clandes'
+      appStore.showError(oauth.error.value)
+    } finally {
+      oauth.loading.value = false
+    }
   } else {
     await oauth.generateAuthUrl(addMethod.value, form.proxy_id)
   }
@@ -4622,21 +4637,45 @@ const handleAnthropicExchange = async (authCode: string) => {
   oauth.error.value = ''
 
   try {
-    const proxyConfig = form.proxy_id ? { proxy_id: form.proxy_id } : {}
-    const endpoint =
-      addMethod.value === 'oauth'
-        ? '/admin/accounts/exchange-code'
-        : '/admin/accounts/exchange-setup-token-code'
+    let tokenInfo: Record<string, unknown>
 
-    const tokenInfo = await adminAPI.accounts.exchangeCode(endpoint, {
-      session_id: oauth.sessionId.value,
-      code: authCode.trim(),
-      ...proxyConfig
-    })
+    if (clandesExclusive.value) {
+      // Clandes: exchange code via clandes RPC
+      const callbackUrl = window.location.origin + '/admin/accounts'
+      const result = await adminAPI.clandes.exchangeOAuth(
+        oauth.sessionId.value,
+        authCode.trim(),
+        callbackUrl
+      )
+      tokenInfo = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        expires_in: result.expires_in,
+        email_address: result.email,
+        org_uuid: result.org_uuid
+      }
+    } else {
+      const proxyConfig = form.proxy_id ? { proxy_id: form.proxy_id } : {}
+      const endpoint =
+        addMethod.value === 'oauth'
+          ? '/admin/accounts/exchange-code'
+          : '/admin/accounts/exchange-setup-token-code'
+
+      tokenInfo = await adminAPI.accounts.exchangeCode(endpoint, {
+        session_id: oauth.sessionId.value,
+        code: authCode.trim(),
+        ...proxyConfig
+      })
+    }
 
     // Build extra with quota control settings
-    const baseExtra = oauth.buildExtraInfo(tokenInfo) || {}
+    const baseExtra = oauth.buildExtraInfo(tokenInfo as any) || {}
     const extra: Record<string, unknown> = { ...baseExtra }
+
+    // Clandes exclusive flag
+    if (clandesExclusive.value) {
+      extra.clandes = true
+    }
 
     // Add window cost limit settings
     if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {
@@ -4760,6 +4799,11 @@ const handleCookieAuth = async (sessionKey: string) => {
         // Build extra with quota control settings
         const baseExtra = oauth.buildExtraInfo(tokenInfo) || {}
         const extra: Record<string, unknown> = { ...baseExtra }
+
+        // Clandes exclusive flag
+        if (clandesExclusive.value) {
+          extra.clandes = true
+        }
 
         // Add window cost limit settings
         if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {

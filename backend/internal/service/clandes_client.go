@@ -120,6 +120,106 @@ func (c *ClandesClient) Status() ClandesStatus {
 	}
 }
 
+// StartOAuthLogin initiates a Claude OAuth login via clandes's ClaudeAuthService.
+// Returns (authUrl, sessionId) for the frontend to redirect the user.
+func (c *ClandesClient) StartOAuthLogin(ctx context.Context, redirectURI, proxyURL string) (authURL, sessionID string, err error) {
+	c.mu.Lock()
+	if !c.service.IsValid() {
+		c.mu.Unlock()
+		return "", "", fmt.Errorf("clandes: not connected")
+	}
+	svcFut, svcRel := c.service.ClaudeAuthService(ctx, nil)
+	c.mu.Unlock()
+	defer svcRel()
+
+	svcRes, err := svcFut.Struct()
+	if err != nil {
+		return "", "", fmt.Errorf("clandes: get ClaudeAuthService: %w", err)
+	}
+	authSvc := svcRes.Svc()
+	defer authSvc.Release()
+
+	fut, rel := authSvc.StartLogin(ctx, func(p proto.ClaudeAuthService_startLogin_Params) error {
+		if err := p.SetRedirectUri(redirectURI); err != nil {
+			return err
+		}
+		if proxyURL != "" {
+			if err := p.SetProxyUrl(proxyURL); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return "", "", fmt.Errorf("clandes: startLogin: %w", err)
+	}
+	authURL, _ = res.AuthUrl()
+	sessionID, _ = res.SessionId()
+	return authURL, sessionID, nil
+}
+
+// CompleteOAuthLogin exchanges the OAuth code for tokens via clandes.
+func (c *ClandesClient) CompleteOAuthLogin(ctx context.Context, sessionID, code, callbackURL string) (*OAuthLoginResult, error) {
+	c.mu.Lock()
+	if !c.service.IsValid() {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("clandes: not connected")
+	}
+	svcFut, svcRel := c.service.ClaudeAuthService(ctx, nil)
+	c.mu.Unlock()
+	defer svcRel()
+
+	svcRes, err := svcFut.Struct()
+	if err != nil {
+		return nil, fmt.Errorf("clandes: get ClaudeAuthService: %w", err)
+	}
+	authSvc := svcRes.Svc()
+	defer authSvc.Release()
+
+	fut, rel := authSvc.CompleteLogin(ctx, func(p proto.ClaudeAuthService_completeLogin_Params) error {
+		if err := p.SetSessionId(sessionID); err != nil {
+			return err
+		}
+		if err := p.SetCode(code); err != nil {
+			return err
+		}
+		return p.SetCallbackUrl(callbackURL)
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return nil, fmt.Errorf("clandes: completeLogin: %w", err)
+	}
+	if !res.Success() {
+		msg, _ := res.Message_()
+		return nil, fmt.Errorf("clandes: completeLogin failed: %s", msg)
+	}
+	accessToken, _ := res.AccessToken()
+	refreshToken, _ := res.RefreshToken()
+	email, _ := res.Email()
+	orgID, _ := res.OrganizationId()
+	return &OAuthLoginResult{
+		AccessToken:    accessToken,
+		RefreshToken:   refreshToken,
+		ExpiresIn:      res.ExpiresIn(),
+		Email:          email,
+		OrganizationID: orgID,
+	}, nil
+}
+
+// OAuthLoginResult holds the tokens from a successful OAuth login.
+type OAuthLoginResult struct {
+	AccessToken    string
+	RefreshToken   string
+	ExpiresIn      uint64
+	Email          string
+	OrganizationID string
+}
+
 // AccountService returns the clandes AccountService client. Caller must call Release() when done.
 func (c *ClandesClient) AccountService() (proto.AccountService, error) {
 	c.mu.Lock()

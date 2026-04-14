@@ -20,9 +20,48 @@ export async function syncAccounts(): Promise<{ message: string }> {
   return data
 }
 
+export interface OAuthStartResponse {
+  auth_url: string
+  session_id: string
+}
+
+export interface OAuthExchangeResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  email: string
+  org_uuid: string
+}
+
+export async function startOAuth(
+  redirectUri: string,
+  proxyId?: number | null
+): Promise<OAuthStartResponse> {
+  const { data } = await apiClient.post<OAuthStartResponse>('/admin/clandes/oauth/start', {
+    redirect_uri: redirectUri,
+    ...(proxyId ? { proxy_id: proxyId } : {})
+  })
+  return data
+}
+
+export async function exchangeOAuth(
+  sessionId: string,
+  code: string,
+  callbackUrl: string
+): Promise<OAuthExchangeResponse> {
+  const { data } = await apiClient.post<OAuthExchangeResponse>('/admin/clandes/oauth/exchange', {
+    session_id: sessionId,
+    code,
+    callback_url: callbackUrl
+  })
+  return data
+}
+
 export const clandesAPI = {
   getStatus,
-  syncAccounts
+  syncAccounts,
+  startOAuth,
+  exchangeOAuth
 }
 
 export default clandesAPI
