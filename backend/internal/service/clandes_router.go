@@ -18,6 +18,7 @@ type clandesRouterImpl struct {
 	gatewayService      *GatewayService
 	billingCacheService *BillingCacheService
 	apiKeyService       *APIKeyService
+	subscriptionService *SubscriptionService
 }
 
 func newClandesRouterImpl(
@@ -25,12 +26,14 @@ func newClandesRouterImpl(
 	gatewaySvc *GatewayService,
 	billingSvc *BillingCacheService,
 	apiKeySvc *APIKeyService,
+	subSvc *SubscriptionService,
 ) *clandesRouterImpl {
 	return &clandesRouterImpl{
 		reqCache:            reqCache,
 		gatewayService:      gatewaySvc,
 		billingCacheService: billingSvc,
 		apiKeyService:       apiKeySvc,
+		subscriptionService: subSvc,
 	}
 }
 
@@ -111,14 +114,23 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 		selection.ReleaseFunc()
 	}
 
-	// 4. Cache context for reportUsage
+	// 4. Resolve subscription for subscription-type groups
+	var subscription *UserSubscription
+	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && r.subscriptionService != nil {
+		if sub, err := r.subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, *apiKey.GroupID); err == nil {
+			subscription = sub
+		}
+	}
+
+	// 5. Cache context for reportUsage
 	r.reqCache.set(requestID, &clandesRequestContext{
-		APIKey:    apiKey,
-		User:      apiKey.User,
-		Account:   account,
-		GroupID:   apiKey.GroupID,
-		StartTime: time.Now(),
-		UserAgent: userAgent,
+		APIKey:       apiKey,
+		User:         apiKey.User,
+		Account:      account,
+		Subscription: subscription,
+		GroupID:      apiKey.GroupID,
+		StartTime:    time.Now(),
+		UserAgent:    userAgent,
 	})
 
 	log.Info("routeRequest: routed", zap.Int64("account_id", account.ID))
