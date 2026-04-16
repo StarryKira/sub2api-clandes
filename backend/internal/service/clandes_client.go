@@ -76,9 +76,14 @@ func NewClandesClient(
 
 // Start connects to clandes, syncs accounts, registers the Router callback,
 // and launches a background goroutine to reconnect on disconnect.
+// If the initial connection fails, the client remains alive (enabled but not connected)
+// and the reconnect loop retries in the background.
 func (c *ClandesClient) Start(ctx context.Context, syncAccounts func(ctx context.Context, client *ClandesClient) error) error {
 	if err := c.connect(ctx); err != nil {
-		return fmt.Errorf("clandes: initial connect: %w", err)
+		logger.L().Warn("clandes: initial connect failed, will retry in background",
+			zap.Error(err), zap.Duration("interval", c.reconnectInterval))
+		go c.reconnectLoop(syncAccounts, true)
+		return nil
 	}
 	if syncAccounts != nil {
 		if err := syncAccounts(ctx, c); err != nil {
@@ -88,7 +93,7 @@ func (c *ClandesClient) Start(ctx context.Context, syncAccounts func(ctx context
 	if err := c.registerCallback(ctx); err != nil {
 		return fmt.Errorf("clandes: register callback: %w", err)
 	}
-	go c.reconnectLoop(syncAccounts)
+	go c.reconnectLoop(syncAccounts, false)
 	return nil
 }
 
@@ -409,15 +414,18 @@ func (c *ClandesClient) registerCallback(ctx context.Context) error {
 	return nil
 }
 
-func (c *ClandesClient) reconnectLoop(syncAccounts func(ctx context.Context, client *ClandesClient) error) {
-	for {
+func (c *ClandesClient) reconnectLoop(syncAccounts func(ctx context.Context, client *ClandesClient) error, immediateRetry bool) {
+	// When initial connect succeeded, wait for the connection to drop first.
+	if !immediateRetry {
 		select {
 		case <-c.closed:
 			return
 		case <-c.conn.Done():
 			logger.L().Warn("clandes: connection lost, reconnecting", zap.Duration("in", c.reconnectInterval))
 		}
+	}
 
+	for {
 		select {
 		case <-c.closed:
 			return
@@ -436,6 +444,14 @@ func (c *ClandesClient) reconnectLoop(syncAccounts func(ctx context.Context, cli
 		}
 		if err := c.registerCallback(ctx); err != nil {
 			logger.L().Error("clandes: re-register callback failed", zap.Error(err))
+		}
+
+		// Successfully connected — wait for disconnect before retrying.
+		select {
+		case <-c.closed:
+			return
+		case <-c.conn.Done():
+			logger.L().Warn("clandes: connection lost, reconnecting", zap.Duration("in", c.reconnectInterval))
 		}
 	}
 }

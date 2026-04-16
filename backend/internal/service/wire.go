@@ -520,8 +520,7 @@ func ProvideClandesClient(
 
 	ctx := context.Background()
 	if err := client.Start(ctx, syncFn); err != nil {
-		logger.L().Error("clandes: failed to start client — clandes integration disabled", zap.Error(err))
-		return nil
+		logger.L().Error("clandes: failed to start client", zap.Error(err))
 	}
 	return client
 }
