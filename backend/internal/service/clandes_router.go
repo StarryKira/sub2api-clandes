@@ -82,17 +82,26 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 		return reject(401, "api key has no user")
 	}
 
-	// 2. Check billing eligibility
+	// 2. Resolve subscription (must precede billing check so subscription-mode
+	// users are gated by quota, not balance).
 	var group *Group
 	if apiKey.Group != nil {
 		group = apiKey.Group
 	}
-	if err := r.billingCacheService.CheckBillingEligibility(ctx, apiKey.User, apiKey, group, nil); err != nil {
+	var subscription *UserSubscription
+	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && r.subscriptionService != nil && apiKey.GroupID != nil {
+		if sub, err := r.subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, *apiKey.GroupID); err == nil {
+			subscription = sub
+		}
+	}
+
+	// 3. Check billing eligibility
+	if err := r.billingCacheService.CheckBillingEligibility(ctx, apiKey.User, apiKey, group, subscription); err != nil {
 		log.Info("routeRequest: billing eligibility failed", zap.Error(err))
 		return reject(403, err.Error())
 	}
 
-	// 3. Select account (set Claude Code client flag from User-Agent)
+	// 4. Select account (set Claude Code client flag from User-Agent)
 	if claudeCodeUAPattern.MatchString(userAgent) {
 		ctx = SetClaudeCodeClient(ctx, true)
 	}
@@ -122,14 +131,6 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 		_ = r.gatewayService.BindStickySession(ctx, apiKey.GroupID, sessionID, account.ID)
 	}
 
-	// 4. Resolve subscription for subscription-type groups
-	var subscription *UserSubscription
-	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && r.subscriptionService != nil {
-		if sub, err := r.subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, *apiKey.GroupID); err == nil {
-			subscription = sub
-		}
-	}
-
 	// 5. Cache context for reportUsage
 	r.reqCache.set(requestID, &clandesRequestContext{
 		APIKey:       apiKey,
@@ -144,7 +145,7 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 
 	log.Info("routeRequest: routed", zap.Int64("account_id", account.ID))
 
-	// 5. Return RouteResult.routed
+	// 6. Return RouteResult.routed
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
