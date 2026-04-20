@@ -29,6 +29,7 @@ jobs:
   # Update VERSION file with tag version
   update-version:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-clandes') && !contains(github.event.inputs.tag, '-clandes') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -53,6 +54,7 @@ jobs:
 
   build-frontend:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref, '-clandes') && !contains(github.event.inputs.tag, '-clandes') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
