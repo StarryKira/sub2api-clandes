@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -95,7 +96,31 @@ func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_
 		}
 	}
 
-	// 3. Check billing eligibility
+	// 3a. Subscription window maintenance (mirrors api_key_auth middleware).
+	// Cap'n Proto bypasses the HTTP auth middleware so we must activate /
+	// reset daily/weekly/monthly windows here — otherwise IncrementUsage
+	// accumulates against stale *_window_start and the frontend's
+	// normalizeExpiredWindows zeroes the display.
+	if subscription != nil {
+		needsMaintenance, validateErr := r.subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
+		if validateErr != nil {
+			status := uint16(403)
+			if errors.Is(validateErr, ErrDailyLimitExceeded) ||
+				errors.Is(validateErr, ErrWeeklyLimitExceeded) ||
+				errors.Is(validateErr, ErrMonthlyLimitExceeded) {
+				status = 429
+			}
+			log.Info("routeRequest: subscription validate failed", zap.Error(validateErr))
+			return reject(status, validateErr.Error())
+		}
+		if needsMaintenance {
+			maintenanceCopy := *subscription
+			r.subscriptionService.DoWindowMaintenance(&maintenanceCopy)
+		}
+	}
+
+	// 3b. Check billing eligibility (balance mode + API key rate limits;
+	// subscription limits were already validated above).
 	if err := r.billingCacheService.CheckBillingEligibility(ctx, apiKey.User, apiKey, group, subscription); err != nil {
 		log.Info("routeRequest: billing eligibility failed", zap.Error(err))
 		return reject(403, err.Error())
@@ -236,6 +261,15 @@ func (r *clandesRouterImpl) ReportUsage(ctx context.Context, call proto.Router_r
 			APIKeyService:    r.apiKeyService,
 		}); err != nil {
 			log.Error("reportUsage: RecordUsage failed", zap.Error(err))
+			return
+		}
+
+		// DB is now authoritative; drop the subscription's in-process L1 cache
+		// and the Redis-backed L2 entry so the next eligibility check and the
+		// next admin read return the fresh usage values.
+		if rctx.Subscription != nil && rctx.APIKey != nil && rctx.APIKey.GroupID != nil {
+			r.subscriptionService.InvalidateSubCache(rctx.User.ID, *rctx.APIKey.GroupID)
+			_ = r.billingCacheService.InvalidateSubscription(bctx, rctx.User.ID, *rctx.APIKey.GroupID)
 		}
 	}()
 
