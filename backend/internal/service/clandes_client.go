@@ -43,6 +43,7 @@ type ClandesClient struct {
 	billingCacheService *BillingCacheService
 	apiKeyService       *APIKeyService
 	subscriptionService *SubscriptionService
+	rateLimitService    *RateLimitService
 
 	closed    chan struct{}
 	closeOnce sync.Once
@@ -57,6 +58,7 @@ func NewClandesClient(
 	billingCacheService *BillingCacheService,
 	apiKeyService *APIKeyService,
 	subscriptionService *SubscriptionService,
+	rateLimitService *RateLimitService,
 ) *ClandesClient {
 	interval := time.Duration(reconnectInterval) * time.Second
 	if interval <= 0 {
@@ -70,6 +72,7 @@ func NewClandesClient(
 		billingCacheService: billingCacheService,
 		apiKeyService:       apiKeyService,
 		subscriptionService: subscriptionService,
+		rateLimitService:    rateLimitService,
 		reqCache:            newClandesRequestCache(),
 		closed:              make(chan struct{}),
 	}
@@ -407,7 +410,7 @@ func (c *ClandesClient) registerCallback(ctx context.Context) error {
 	defer c.mu.Unlock()
 
 	// Build the Router server
-	c.routerImpl = newClandesRouterImpl(c.reqCache, c.gatewayService, c.billingCacheService, c.apiKeyService, c.subscriptionService)
+	c.routerImpl = newClandesRouterImpl(c.reqCache, c.gatewayService, c.billingCacheService, c.apiKeyService, c.subscriptionService, c.rateLimitService)
 	routerClient := proto.Router_ServerToClient(c.routerImpl)
 
 	// Register with clandes

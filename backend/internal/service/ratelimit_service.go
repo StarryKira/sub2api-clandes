@@ -1101,6 +1101,31 @@ func (s *RateLimitService) handle529(ctx context.Context, account *Account) {
 	slog.Info("account_overloaded", "account_id", account.ID, "until", until)
 }
 
+// EnsurePredictedSessionWindow 在没有 Anthropic 响应头的情况下持久化一个预测的 5h 窗口。
+// 当窗口已存在且未过期时为 no-op。用于 clandes Cap'n Proto 路径等无法拿到
+// anthropic-ratelimit-unified-5h-* 响应头的调用方，否则 GetCurrentWindowStartTime
+// 会一直退回到"当前整点"预测，导致 current_window_cost 只覆盖不足 1 小时。
+// 预测公式与 UpdateSessionWindow 的 header-missing 回退分支保持一致。
+func (s *RateLimitService) EnsurePredictedSessionWindow(ctx context.Context, account *Account) {
+	if s == nil || s.accountRepo == nil || account == nil {
+		return
+	}
+	if account.SessionWindowEnd != nil && time.Now().Before(*account.SessionWindowEnd) {
+		return
+	}
+	now := time.Now()
+	start := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+	end := start.Add(5 * time.Hour)
+	if err := s.accountRepo.UpdateSessionWindow(ctx, account.ID, &start, &end, "allowed"); err != nil {
+		slog.Warn("predicted_session_window_update_failed", "account_id", account.ID, "error", err)
+		return
+	}
+	account.SessionWindowStart = &start
+	account.SessionWindowEnd = &end
+	account.SessionWindowStatus = "allowed"
+	slog.Info("predicted_session_window_initialized", "account_id", account.ID, "window_start", start, "window_end", end)
+}
+
 // UpdateSessionWindow 从成功响应更新5h窗口状态
 func (s *RateLimitService) UpdateSessionWindow(ctx context.Context, account *Account, headers http.Header) {
 	status := headers.Get("anthropic-ratelimit-unified-5h-status")

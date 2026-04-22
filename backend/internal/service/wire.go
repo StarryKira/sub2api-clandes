@@ -498,6 +498,7 @@ func ProvideClandesClient(
 	billingCacheSvc *BillingCacheService,
 	apiKeySvc *APIKeyService,
 	subscriptionSvc *SubscriptionService,
+	rateLimitSvc *RateLimitService,
 	accountRepo AccountRepository,
 ) *ClandesClient {
 	if !cfg.Clandes.Enabled {
@@ -512,6 +513,7 @@ func ProvideClandesClient(
 		billingCacheSvc,
 		apiKeySvc,
 		subscriptionSvc,
+		rateLimitSvc,
 	)
 
 	syncFn := func(ctx context.Context, c *ClandesClient) error {

@@ -20,6 +20,7 @@ type clandesRouterImpl struct {
 	billingCacheService *BillingCacheService
 	apiKeyService       *APIKeyService
 	subscriptionService *SubscriptionService
+	rateLimitService    *RateLimitService
 }
 
 func newClandesRouterImpl(
@@ -28,6 +29,7 @@ func newClandesRouterImpl(
 	billingSvc *BillingCacheService,
 	apiKeySvc *APIKeyService,
 	subSvc *SubscriptionService,
+	rateLimitSvc *RateLimitService,
 ) *clandesRouterImpl {
 	return &clandesRouterImpl{
 		reqCache:            reqCache,
@@ -35,6 +37,7 @@ func newClandesRouterImpl(
 		billingCacheService: billingSvc,
 		apiKeyService:       apiKeySvc,
 		subscriptionService: subSvc,
+		rateLimitService:    rateLimitSvc,
 	}
 }
 
@@ -270,6 +273,21 @@ func (r *clandesRouterImpl) ReportUsage(ctx context.Context, call proto.Router_r
 		if rctx.Subscription != nil && rctx.APIKey != nil && rctx.APIKey.GroupID != nil {
 			r.subscriptionService.InvalidateSubCache(rctx.User.ID, *rctx.APIKey.GroupID)
 			_ = r.billingCacheService.InvalidateSubscription(bctx, rctx.User.ID, *rctx.APIKey.GroupID)
+		}
+
+		// Cap'n Proto path has no anthropic-ratelimit-unified-5h-* headers,
+		// so session_window_start/end never populate via UpdateSessionWindow.
+		// Persist a predicted 5h window and bump the per-minute RPM so the
+		// admin page's current_window_cost and current_rpm reflect reality.
+		if rctx.Account != nil && rctx.Account.IsAnthropicOAuthOrSetupToken() {
+			if r.rateLimitService != nil && rctx.Account.GetWindowCostLimit() > 0 {
+				r.rateLimitService.EnsurePredictedSessionWindow(bctx, rctx.Account)
+			}
+			if rctx.Account.GetBaseRPM() > 0 {
+				if err := r.gatewayService.IncrementAccountRPM(bctx, rctx.Account.ID); err != nil {
+					log.Warn("reportUsage: rpm increment failed", zap.Error(err))
+				}
+			}
 		}
 	}()
 
