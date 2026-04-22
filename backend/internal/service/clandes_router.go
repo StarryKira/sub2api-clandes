@@ -211,14 +211,14 @@ func (r *clandesRouterImpl) ReportUsage(ctx context.Context, call proto.Router_r
 	)
 
 	// Retrieve cached context from routeRequest
-	rctx, ok := r.reqCache.getAndDelete(requestID)
+	rctx, release, ok := r.reqCache.getAndDelete(requestID)
 	if !ok {
 		log.Warn("reportUsage: no cached context (expired or unknown request_id)")
 		return nil
 	}
 	// Release the concurrency slot now that the request is complete.
-	if rctx.ReleaseFunc != nil {
-		rctx.ReleaseFunc()
+	if release != nil {
+		release()
 	}
 
 	model, _ := report.Model()
