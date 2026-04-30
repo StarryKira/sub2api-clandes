@@ -463,6 +463,46 @@ func (c ClandesService) GetVersion(ctx context.Context, params func(ClandesServi
 
 }
 
+func (c ClandesService) CodexAuthService(ctx context.Context, params func(ClandesService_codexAuthService_Params) error) (ClandesService_codexAuthService_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xc2b6e8aae63a6302,
+			MethodID:      6,
+			InterfaceName: "clandes.capnp:ClandesService",
+			MethodName:    "codexAuthService",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(ClandesService_codexAuthService_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return ClandesService_codexAuthService_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c ClandesService) CodexQueryService(ctx context.Context, params func(ClandesService_codexQueryService_Params) error) (ClandesService_codexQueryService_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xc2b6e8aae63a6302,
+			MethodID:      7,
+			InterfaceName: "clandes.capnp:ClandesService",
+			MethodName:    "codexQueryService",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(ClandesService_codexQueryService_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return ClandesService_codexQueryService_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c ClandesService) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -547,6 +587,10 @@ type ClandesService_Server interface {
 	PolicyService(context.Context, ClandesService_policyService) error
 
 	GetVersion(context.Context, ClandesService_getVersion) error
+
+	CodexAuthService(context.Context, ClandesService_codexAuthService) error
+
+	CodexQueryService(context.Context, ClandesService_codexQueryService) error
 }
 
 // ClandesService_NewServer creates a new Server from an implementation of ClandesService_Server.
@@ -565,7 +609,7 @@ func ClandesService_ServerToClient(s ClandesService_Server) ClandesService {
 // This can be used to create a more complicated Server.
 func ClandesService_Methods(methods []server.Method, s ClandesService_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 6)
+		methods = make([]server.Method, 0, 8)
 	}
 
 	methods = append(methods, server.Method{
@@ -637,6 +681,30 @@ func ClandesService_Methods(methods []server.Method, s ClandesService_Server) []
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.GetVersion(ctx, ClandesService_getVersion{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xc2b6e8aae63a6302,
+			MethodID:      6,
+			InterfaceName: "clandes.capnp:ClandesService",
+			MethodName:    "codexAuthService",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.CodexAuthService(ctx, ClandesService_codexAuthService{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xc2b6e8aae63a6302,
+			MethodID:      7,
+			InterfaceName: "clandes.capnp:ClandesService",
+			MethodName:    "codexQueryService",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.CodexQueryService(ctx, ClandesService_codexQueryService{call})
 		},
 	})
 
@@ -743,6 +811,40 @@ func (c ClandesService_getVersion) Args() ClandesService_getVersion_Params {
 func (c ClandesService_getVersion) AllocResults() (ClandesService_getVersion_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return ClandesService_getVersion_Results(r), err
+}
+
+// ClandesService_codexAuthService holds the state for a server call to ClandesService.codexAuthService.
+// See server.Call for documentation.
+type ClandesService_codexAuthService struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c ClandesService_codexAuthService) Args() ClandesService_codexAuthService_Params {
+	return ClandesService_codexAuthService_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c ClandesService_codexAuthService) AllocResults() (ClandesService_codexAuthService_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexAuthService_Results(r), err
+}
+
+// ClandesService_codexQueryService holds the state for a server call to ClandesService.codexQueryService.
+// See server.Call for documentation.
+type ClandesService_codexQueryService struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c ClandesService_codexQueryService) Args() ClandesService_codexQueryService_Params {
+	return ClandesService_codexQueryService_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c ClandesService_codexQueryService) AllocResults() (ClandesService_codexQueryService_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexQueryService_Results(r), err
 }
 
 // ClandesService_List is a list of ClandesService.
@@ -1649,4 +1751,304 @@ type ClandesService_getVersion_Results_Future struct{ *capnp.Future }
 func (f ClandesService_getVersion_Results_Future) Struct() (ClandesService_getVersion_Results, error) {
 	p, err := f.Future.Ptr()
 	return ClandesService_getVersion_Results(p.Struct()), err
+}
+
+type ClandesService_codexAuthService_Params capnp.Struct
+
+// ClandesService_codexAuthService_Params_TypeID is the unique identifier for the type ClandesService_codexAuthService_Params.
+const ClandesService_codexAuthService_Params_TypeID = 0xcfcac07cdc82940d
+
+func NewClandesService_codexAuthService_Params(s *capnp.Segment) (ClandesService_codexAuthService_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return ClandesService_codexAuthService_Params(st), err
+}
+
+func NewRootClandesService_codexAuthService_Params(s *capnp.Segment) (ClandesService_codexAuthService_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return ClandesService_codexAuthService_Params(st), err
+}
+
+func ReadRootClandesService_codexAuthService_Params(msg *capnp.Message) (ClandesService_codexAuthService_Params, error) {
+	root, err := msg.Root()
+	return ClandesService_codexAuthService_Params(root.Struct()), err
+}
+
+func (s ClandesService_codexAuthService_Params) String() string {
+	str, _ := text.Marshal(0xcfcac07cdc82940d, capnp.Struct(s))
+	return str
+}
+
+func (s ClandesService_codexAuthService_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (ClandesService_codexAuthService_Params) DecodeFromPtr(p capnp.Ptr) ClandesService_codexAuthService_Params {
+	return ClandesService_codexAuthService_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s ClandesService_codexAuthService_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s ClandesService_codexAuthService_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s ClandesService_codexAuthService_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s ClandesService_codexAuthService_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// ClandesService_codexAuthService_Params_List is a list of ClandesService_codexAuthService_Params.
+type ClandesService_codexAuthService_Params_List = capnp.StructList[ClandesService_codexAuthService_Params]
+
+// NewClandesService_codexAuthService_Params creates a new list of ClandesService_codexAuthService_Params.
+func NewClandesService_codexAuthService_Params_List(s *capnp.Segment, sz int32) (ClandesService_codexAuthService_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[ClandesService_codexAuthService_Params](l), err
+}
+
+// ClandesService_codexAuthService_Params_Future is a wrapper for a ClandesService_codexAuthService_Params promised by a client call.
+type ClandesService_codexAuthService_Params_Future struct{ *capnp.Future }
+
+func (f ClandesService_codexAuthService_Params_Future) Struct() (ClandesService_codexAuthService_Params, error) {
+	p, err := f.Future.Ptr()
+	return ClandesService_codexAuthService_Params(p.Struct()), err
+}
+
+type ClandesService_codexAuthService_Results capnp.Struct
+
+// ClandesService_codexAuthService_Results_TypeID is the unique identifier for the type ClandesService_codexAuthService_Results.
+const ClandesService_codexAuthService_Results_TypeID = 0x864a5410653ed036
+
+func NewClandesService_codexAuthService_Results(s *capnp.Segment) (ClandesService_codexAuthService_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexAuthService_Results(st), err
+}
+
+func NewRootClandesService_codexAuthService_Results(s *capnp.Segment) (ClandesService_codexAuthService_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexAuthService_Results(st), err
+}
+
+func ReadRootClandesService_codexAuthService_Results(msg *capnp.Message) (ClandesService_codexAuthService_Results, error) {
+	root, err := msg.Root()
+	return ClandesService_codexAuthService_Results(root.Struct()), err
+}
+
+func (s ClandesService_codexAuthService_Results) String() string {
+	str, _ := text.Marshal(0x864a5410653ed036, capnp.Struct(s))
+	return str
+}
+
+func (s ClandesService_codexAuthService_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (ClandesService_codexAuthService_Results) DecodeFromPtr(p capnp.Ptr) ClandesService_codexAuthService_Results {
+	return ClandesService_codexAuthService_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s ClandesService_codexAuthService_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s ClandesService_codexAuthService_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s ClandesService_codexAuthService_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s ClandesService_codexAuthService_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s ClandesService_codexAuthService_Results) Svc() CodexAuthService {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return CodexAuthService(p.Interface().Client())
+}
+
+func (s ClandesService_codexAuthService_Results) HasSvc() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s ClandesService_codexAuthService_Results) SetSvc(v CodexAuthService) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// ClandesService_codexAuthService_Results_List is a list of ClandesService_codexAuthService_Results.
+type ClandesService_codexAuthService_Results_List = capnp.StructList[ClandesService_codexAuthService_Results]
+
+// NewClandesService_codexAuthService_Results creates a new list of ClandesService_codexAuthService_Results.
+func NewClandesService_codexAuthService_Results_List(s *capnp.Segment, sz int32) (ClandesService_codexAuthService_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[ClandesService_codexAuthService_Results](l), err
+}
+
+// ClandesService_codexAuthService_Results_Future is a wrapper for a ClandesService_codexAuthService_Results promised by a client call.
+type ClandesService_codexAuthService_Results_Future struct{ *capnp.Future }
+
+func (f ClandesService_codexAuthService_Results_Future) Struct() (ClandesService_codexAuthService_Results, error) {
+	p, err := f.Future.Ptr()
+	return ClandesService_codexAuthService_Results(p.Struct()), err
+}
+func (p ClandesService_codexAuthService_Results_Future) Svc() CodexAuthService {
+	return CodexAuthService(p.Future.Field(0, nil).Client())
+}
+
+type ClandesService_codexQueryService_Params capnp.Struct
+
+// ClandesService_codexQueryService_Params_TypeID is the unique identifier for the type ClandesService_codexQueryService_Params.
+const ClandesService_codexQueryService_Params_TypeID = 0xbb180e0af8c3a17d
+
+func NewClandesService_codexQueryService_Params(s *capnp.Segment) (ClandesService_codexQueryService_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return ClandesService_codexQueryService_Params(st), err
+}
+
+func NewRootClandesService_codexQueryService_Params(s *capnp.Segment) (ClandesService_codexQueryService_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return ClandesService_codexQueryService_Params(st), err
+}
+
+func ReadRootClandesService_codexQueryService_Params(msg *capnp.Message) (ClandesService_codexQueryService_Params, error) {
+	root, err := msg.Root()
+	return ClandesService_codexQueryService_Params(root.Struct()), err
+}
+
+func (s ClandesService_codexQueryService_Params) String() string {
+	str, _ := text.Marshal(0xbb180e0af8c3a17d, capnp.Struct(s))
+	return str
+}
+
+func (s ClandesService_codexQueryService_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (ClandesService_codexQueryService_Params) DecodeFromPtr(p capnp.Ptr) ClandesService_codexQueryService_Params {
+	return ClandesService_codexQueryService_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s ClandesService_codexQueryService_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s ClandesService_codexQueryService_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s ClandesService_codexQueryService_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s ClandesService_codexQueryService_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// ClandesService_codexQueryService_Params_List is a list of ClandesService_codexQueryService_Params.
+type ClandesService_codexQueryService_Params_List = capnp.StructList[ClandesService_codexQueryService_Params]
+
+// NewClandesService_codexQueryService_Params creates a new list of ClandesService_codexQueryService_Params.
+func NewClandesService_codexQueryService_Params_List(s *capnp.Segment, sz int32) (ClandesService_codexQueryService_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[ClandesService_codexQueryService_Params](l), err
+}
+
+// ClandesService_codexQueryService_Params_Future is a wrapper for a ClandesService_codexQueryService_Params promised by a client call.
+type ClandesService_codexQueryService_Params_Future struct{ *capnp.Future }
+
+func (f ClandesService_codexQueryService_Params_Future) Struct() (ClandesService_codexQueryService_Params, error) {
+	p, err := f.Future.Ptr()
+	return ClandesService_codexQueryService_Params(p.Struct()), err
+}
+
+type ClandesService_codexQueryService_Results capnp.Struct
+
+// ClandesService_codexQueryService_Results_TypeID is the unique identifier for the type ClandesService_codexQueryService_Results.
+const ClandesService_codexQueryService_Results_TypeID = 0xb9afdabfcfebc339
+
+func NewClandesService_codexQueryService_Results(s *capnp.Segment) (ClandesService_codexQueryService_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexQueryService_Results(st), err
+}
+
+func NewRootClandesService_codexQueryService_Results(s *capnp.Segment) (ClandesService_codexQueryService_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return ClandesService_codexQueryService_Results(st), err
+}
+
+func ReadRootClandesService_codexQueryService_Results(msg *capnp.Message) (ClandesService_codexQueryService_Results, error) {
+	root, err := msg.Root()
+	return ClandesService_codexQueryService_Results(root.Struct()), err
+}
+
+func (s ClandesService_codexQueryService_Results) String() string {
+	str, _ := text.Marshal(0xb9afdabfcfebc339, capnp.Struct(s))
+	return str
+}
+
+func (s ClandesService_codexQueryService_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (ClandesService_codexQueryService_Results) DecodeFromPtr(p capnp.Ptr) ClandesService_codexQueryService_Results {
+	return ClandesService_codexQueryService_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s ClandesService_codexQueryService_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s ClandesService_codexQueryService_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s ClandesService_codexQueryService_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s ClandesService_codexQueryService_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s ClandesService_codexQueryService_Results) Svc() CodexQueryService {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return CodexQueryService(p.Interface().Client())
+}
+
+func (s ClandesService_codexQueryService_Results) HasSvc() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s ClandesService_codexQueryService_Results) SetSvc(v CodexQueryService) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// ClandesService_codexQueryService_Results_List is a list of ClandesService_codexQueryService_Results.
+type ClandesService_codexQueryService_Results_List = capnp.StructList[ClandesService_codexQueryService_Results]
+
+// NewClandesService_codexQueryService_Results creates a new list of ClandesService_codexQueryService_Results.
+func NewClandesService_codexQueryService_Results_List(s *capnp.Segment, sz int32) (ClandesService_codexQueryService_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[ClandesService_codexQueryService_Results](l), err
+}
+
+// ClandesService_codexQueryService_Results_Future is a wrapper for a ClandesService_codexQueryService_Results promised by a client call.
+type ClandesService_codexQueryService_Results_Future struct{ *capnp.Future }
+
+func (f ClandesService_codexQueryService_Results_Future) Struct() (ClandesService_codexQueryService_Results, error) {
+	p, err := f.Future.Ptr()
+	return ClandesService_codexQueryService_Results(p.Struct()), err
+}
+func (p ClandesService_codexQueryService_Results_Future) Svc() CodexQueryService {
+	return CodexQueryService(p.Future.Field(0, nil).Client())
 }

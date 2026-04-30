@@ -206,7 +206,6 @@ async function saveConfig() {
   if (!confirm(t('admin.clandes.cfgRestartConfirm'))) return
   saving.value = true
   try {
-    // auth_token: null = keep; "" = clear; else new value
     const authToken = tokenTouched.value ? form.authToken : null
     await adminAPI.clandes.updateConfig({
       enabled: form.enabled,

@@ -26,14 +26,16 @@ type ClandesClient struct {
 	authToken         string
 	reconnectInterval time.Duration
 
-	mu         sync.Mutex
-	conn       *rpc.Conn
-	service    proto.ClandesService
-	accountSvc proto.AccountService
-	authSvc    proto.ClaudeAuthService
-	querySvc   proto.ClaudeQueryService
-	policySvc  proto.PolicyService
-	version    string
+	mu            sync.Mutex
+	conn          *rpc.Conn
+	service       proto.ClandesService
+	accountSvc    proto.AccountService
+	authSvc       proto.ClaudeAuthService
+	querySvc      proto.ClaudeQueryService
+	policySvc     proto.PolicyService
+	codexAuthSvc  proto.CodexAuthService
+	codexQuerySvc proto.CodexQueryService
+	version       string
 
 	routerImpl *clandesRouterImpl // owns the Router server capability
 	reqCache   *clandesRequestCache
@@ -315,6 +317,184 @@ func (c *ClandesClient) AccountService() (proto.AccountService, error) {
 	return c.accountSvc.AddRef(), nil
 }
 
+// CodexOAuthLoginResult holds the tokens and profile fields from a successful Codex OAuth login.
+type CodexOAuthLoginResult struct {
+	AccountID        string
+	AccessToken      string
+	RefreshToken     string
+	IDToken          string
+	ExpiresIn        uint64
+	ChatGPTAccountID string
+	Email            string
+	PlanType         string
+}
+
+// CodexRefreshResult holds tokens from a Codex refresh-account-token RPC.
+type CodexRefreshResult struct {
+	AccessToken  string
+	RefreshToken string
+	IDToken      string
+	ExpiresIn    uint64
+}
+
+// CodexProfile holds Codex profile fields returned by CodexQueryService.getProfile.
+type CodexProfile struct {
+	AccountID        string
+	ChatGPTAccountID string
+	Email            string
+	PlanType         string
+}
+
+// StartCodexOAuthLogin initiates a Codex (ChatGPT) OAuth login via clandes.
+func (c *ClandesClient) StartCodexOAuthLogin(ctx context.Context, redirectURI, proxyURL string) (authURL, sessionID string, err error) {
+	c.mu.Lock()
+	if !c.codexAuthSvc.IsValid() {
+		c.mu.Unlock()
+		return "", "", fmt.Errorf("clandes: CodexAuthService not available")
+	}
+	authSvc := c.codexAuthSvc.AddRef()
+	c.mu.Unlock()
+	defer authSvc.Release()
+
+	fut, rel := authSvc.StartLogin(ctx, func(p proto.CodexAuthService_startLogin_Params) error {
+		if err := p.SetRedirectUri(redirectURI); err != nil {
+			return err
+		}
+		if proxyURL != "" {
+			if err := p.SetProxyUrl(proxyURL); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return "", "", fmt.Errorf("clandes: codex startLogin: %w", err)
+	}
+	authURL, _ = res.AuthUrl()
+	sessionID, _ = res.SessionId()
+	return authURL, sessionID, nil
+}
+
+// CompleteCodexOAuthLogin exchanges the OAuth code for tokens via clandes Codex.
+func (c *ClandesClient) CompleteCodexOAuthLogin(ctx context.Context, sessionID, code string) (*CodexOAuthLoginResult, error) {
+	c.mu.Lock()
+	if !c.codexAuthSvc.IsValid() {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("clandes: CodexAuthService not available")
+	}
+	authSvc := c.codexAuthSvc.AddRef()
+	c.mu.Unlock()
+	defer authSvc.Release()
+
+	fut, rel := authSvc.CompleteLogin(ctx, func(p proto.CodexAuthService_completeLogin_Params) error {
+		if err := p.SetSessionId(sessionID); err != nil {
+			return err
+		}
+		return p.SetCode(code)
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return nil, fmt.Errorf("clandes: codex completeLogin: %w", err)
+	}
+	if !res.Success() {
+		msg, _ := res.Message_()
+		return nil, fmt.Errorf("clandes: codex completeLogin failed: %s", msg)
+	}
+	accountID, _ := res.AccountId()
+	accessToken, _ := res.AccessToken()
+	refreshToken, _ := res.RefreshToken()
+	idToken, _ := res.IdToken()
+	chatgptAccountID, _ := res.ChatgptAccountId()
+	email, _ := res.Email()
+	planType, _ := res.PlanType()
+	return &CodexOAuthLoginResult{
+		AccountID:        accountID,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		IDToken:          idToken,
+		ExpiresIn:        res.ExpiresIn(),
+		ChatGPTAccountID: chatgptAccountID,
+		Email:            email,
+		PlanType:         planType,
+	}, nil
+}
+
+// RefreshCodexAccountToken refreshes an existing Codex account's tokens via clandes.
+func (c *ClandesClient) RefreshCodexAccountToken(ctx context.Context, accountID string) (*CodexRefreshResult, error) {
+	c.mu.Lock()
+	if !c.codexAuthSvc.IsValid() {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("clandes: CodexAuthService not available")
+	}
+	authSvc := c.codexAuthSvc.AddRef()
+	c.mu.Unlock()
+	defer authSvc.Release()
+
+	fut, rel := authSvc.RefreshAccountToken(ctx, func(p proto.CodexAuthService_refreshAccountToken_Params) error {
+		return p.SetAccountId(accountID)
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return nil, fmt.Errorf("clandes: codex refreshAccountToken: %w", err)
+	}
+	if !res.Success() {
+		msg, _ := res.Message_()
+		return nil, fmt.Errorf("clandes: codex refreshAccountToken failed: %s", msg)
+	}
+	accessToken, _ := res.AccessToken()
+	refreshToken, _ := res.RefreshToken()
+	idToken, _ := res.IdToken()
+	return &CodexRefreshResult{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		IDToken:      idToken,
+		ExpiresIn:    res.ExpiresIn(),
+	}, nil
+}
+
+// GetCodexProfile fetches a Codex account profile via CodexQueryService.
+func (c *ClandesClient) GetCodexProfile(ctx context.Context, accountID string) (*CodexProfile, error) {
+	c.mu.Lock()
+	if !c.codexQuerySvc.IsValid() {
+		c.mu.Unlock()
+		return nil, fmt.Errorf("clandes: CodexQueryService not available")
+	}
+	querySvc := c.codexQuerySvc.AddRef()
+	c.mu.Unlock()
+	defer querySvc.Release()
+
+	fut, rel := querySvc.GetProfile(ctx, func(p proto.CodexQueryService_getProfile_Params) error {
+		return p.SetAccountId(accountID)
+	})
+	defer rel()
+
+	res, err := fut.Struct()
+	if err != nil {
+		return nil, fmt.Errorf("clandes: codex getProfile: %w", err)
+	}
+	if !res.Success() {
+		msg, _ := res.Message_()
+		return nil, fmt.Errorf("clandes: codex getProfile failed: %s", msg)
+	}
+	id, _ := res.AccountId()
+	chatgptID, _ := res.ChatgptAccountId()
+	email, _ := res.Email()
+	planType, _ := res.PlanType()
+	return &CodexProfile{
+		AccountID:        id,
+		ChatGPTAccountID: chatgptID,
+		Email:            email,
+		PlanType:         planType,
+	}, nil
+}
+
 // --- internal ---
 
 func (c *ClandesClient) connect(ctx context.Context) error {
@@ -393,6 +573,25 @@ func (c *ClandesClient) connect(ctx context.Context) error {
 		return fmt.Errorf("clandes: get PolicyService: %w", err)
 	}
 	c.policySvc = cbRes.Svc().AddRef()
+
+	// Get CodexAuthService / CodexQueryService sub-capabilities (best-effort).
+	// Older clandes-server builds don't expose these; missing services degrade to
+	// "Codex unavailable" without affecting Claude functionality.
+	codexAuthFut, codexAuthRel := c.service.CodexAuthService(ctx, nil)
+	defer codexAuthRel()
+	if codexAuthRes, codexAuthErr := codexAuthFut.Struct(); codexAuthErr == nil {
+		c.codexAuthSvc = codexAuthRes.Svc().AddRef()
+	} else {
+		logger.L().Warn("clandes: CodexAuthService unavailable (older clandes?)", zap.Error(codexAuthErr))
+	}
+
+	codexQueryFut, codexQueryRel := c.service.CodexQueryService(ctx, nil)
+	defer codexQueryRel()
+	if codexQueryRes, codexQueryErr := codexQueryFut.Struct(); codexQueryErr == nil {
+		c.codexQuerySvc = codexQueryRes.Svc().AddRef()
+	} else {
+		logger.L().Warn("clandes: CodexQueryService unavailable (older clandes?)", zap.Error(codexQueryErr))
+	}
 
 	// Fetch server version (best-effort; non-fatal if the server is older)
 	verFut, verRel := c.service.GetVersion(ctx, nil)
@@ -490,6 +689,14 @@ func (c *ClandesClient) releaseCapabilities() {
 	if c.policySvc.IsValid() {
 		c.policySvc.Release()
 		c.policySvc = proto.PolicyService{}
+	}
+	if c.codexAuthSvc.IsValid() {
+		c.codexAuthSvc.Release()
+		c.codexAuthSvc = proto.CodexAuthService{}
+	}
+	if c.codexQuerySvc.IsValid() {
+		c.codexQuerySvc.Release()
+		c.codexQuerySvc = proto.CodexQueryService{}
 	}
 	if c.service.IsValid() {
 		c.service.Release()

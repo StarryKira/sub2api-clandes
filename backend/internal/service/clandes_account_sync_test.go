@@ -82,7 +82,8 @@ func TestMapAccountTypeToCapnp(t *testing.T) {
 		{"anthropic oauth", PlatformAnthropic, AccountTypeOAuth, true},
 		{"anthropic setup-token", PlatformAnthropic, AccountTypeSetupToken, true},
 		{"anthropic apikey", PlatformAnthropic, AccountTypeAPIKey, true},
-		{"openai oauth", "openai", AccountTypeOAuth, false},
+		{"openai oauth", PlatformOpenAI, AccountTypeOAuth, true},
+		{"openai apikey", PlatformOpenAI, AccountTypeAPIKey, true},
 		{"anthropic unknown type", PlatformAnthropic, "unknown", false},
 	}
 

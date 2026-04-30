@@ -12,6 +12,7 @@ enum AccountType {
   geminiSubscription @4;
   geminiApiKey       @5;
   awsBedrock         @6;
+  codexApiKey        @7;
 }
 
 struct ClaudeTokenCredentials {
@@ -24,11 +25,24 @@ struct ClaudeApiKeyCredentials {
   baseUrl @1 :Text;
 }
 
+struct CodexOAuthCredentials {
+  accessToken  @0 :Text;
+  refreshToken @1 :Text;
+  idToken      @2 :Text;
+}
+
+struct CodexApiKeyCredentials {
+  apiKey  @0 :Text;
+  baseUrl @1 :Text;
+}
+
 struct AccountCredentials {
   union {
     none              @0 :Void;
     claudeSubCreds    @1 :ClaudeTokenCredentials;
     claudeApiKeyCreds @2 :ClaudeApiKeyCredentials;
+    codexOAuthCreds   @3 :CodexOAuthCredentials;
+    codexApiKeyCreds  @4 :CodexApiKeyCredentials;
   }
 }
 

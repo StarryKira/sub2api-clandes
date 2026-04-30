@@ -67,13 +67,26 @@ export interface OAuthExchangeResponse {
 
 export async function startOAuth(
   redirectUri: string,
-  proxyId?: number | null
+  proxyId?: number | null,
+  platform?: string
 ): Promise<OAuthStartResponse> {
   const { data } = await apiClient.post<OAuthStartResponse>('/admin/clandes/oauth/start', {
     redirect_uri: redirectUri,
-    ...(proxyId != null ? { proxy_id: proxyId } : {})
+    ...(proxyId != null ? { proxy_id: proxyId } : {}),
+    ...(platform ? { platform } : {})
   })
   return data
+}
+
+export interface CodexOAuthExchangeResponse {
+  account_id: string
+  access_token: string
+  refresh_token: string
+  id_token: string
+  expires_in: number
+  chatgpt_account_id: string
+  email: string
+  plan_type: string
 }
 
 export async function exchangeOAuth(
@@ -89,13 +102,57 @@ export async function exchangeOAuth(
   return data
 }
 
+export async function exchangeCodexOAuth(
+  sessionId: string,
+  code: string
+): Promise<CodexOAuthExchangeResponse> {
+  const { data } = await apiClient.post<CodexOAuthExchangeResponse>(
+    '/admin/clandes/oauth/exchange',
+    {
+      session_id: sessionId,
+      code,
+      platform: 'openai'
+    }
+  )
+  return data
+}
+
+export interface CodexRefreshResponse {
+  account_id: number
+  expires_in: number
+}
+
+export async function refreshCodexAccount(accountId: number): Promise<CodexRefreshResponse> {
+  const { data } = await apiClient.post<CodexRefreshResponse>(
+    `/admin/clandes/accounts/${accountId}/refresh`
+  )
+  return data
+}
+
+export interface CodexProfileResponse {
+  account_id: string
+  chatgpt_account_id: string
+  email: string
+  plan_type: string
+}
+
+export async function getCodexProfile(accountId: number): Promise<CodexProfileResponse> {
+  const { data } = await apiClient.get<CodexProfileResponse>(
+    `/admin/clandes/accounts/${accountId}/profile`
+  )
+  return data
+}
+
 export const clandesAPI = {
   getStatus,
   getConfig,
   updateConfig,
   syncAccounts,
   startOAuth,
-  exchangeOAuth
+  exchangeOAuth,
+  exchangeCodexOAuth,
+  refreshCodexAccount,
+  getCodexProfile
 }
 
 export default clandesAPI

@@ -2562,7 +2562,7 @@
 
       <!-- Clandes 专用开关 -->
       <div
-        v-if="form.platform === 'anthropic'"
+        v-if="form.platform === 'anthropic' || form.platform === 'openai'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2792,7 +2792,7 @@
         :allow-multiple="form.platform === 'anthropic'"
         :show-cookie-option="form.platform === 'anthropic' && !clandesExclusive"
         :show-refresh-token-option="(form.platform === 'openai' || form.platform === 'antigravity') && !clandesExclusive"
-        :show-mobile-refresh-token-option="form.platform === 'openai'"
+        :show-mobile-refresh-token-option="form.platform === 'openai' && !clandesExclusive"
         :show-session-token-option="false"
         :show-access-token-option="false"
         :platform="form.platform"
@@ -4156,6 +4156,11 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
   } else {
     delete extra.openai_compact_mode
   }
+  if (clandesExclusive.value) {
+    extra.clandes = true
+  } else {
+    delete extra.clandes
+  }
 
   return Object.keys(extra).length > 0 ? extra : undefined
 }
@@ -4485,7 +4490,22 @@ const goBackToBasicInfo = () => {
 }
 
 const handleGenerateUrl = async () => {
-  if (form.platform === 'openai') {
+  if (form.platform === 'openai' && clandesExclusive.value) {
+    // Codex via clandes RPC
+    openaiOAuth.loading.value = true
+    openaiOAuth.error.value = ''
+    try {
+      const redirectUri = 'http://localhost:54321/callback'
+      const result = await adminAPI.clandes.startOAuth(redirectUri, form.proxy_id, 'openai')
+      openaiOAuth.authUrl.value = result.auth_url
+      openaiOAuth.sessionId.value = result.session_id
+    } catch (err: any) {
+      openaiOAuth.error.value = err.response?.data?.detail || 'Failed to generate Codex auth URL via clandes'
+      appStore.showError(openaiOAuth.error.value)
+    } finally {
+      openaiOAuth.loading.value = false
+    }
+  } else if (form.platform === 'openai') {
     await openaiOAuth.generateAuthUrl(form.proxy_id)
   } else if (form.platform === 'gemini') {
     await geminiOAuth.generateAuthUrl(
@@ -4608,6 +4628,40 @@ const handleOpenAIExchange = async (authCode: string) => {
   oauthClient.error.value = ''
 
   try {
+    // Codex via clandes RPC
+    if (clandesExclusive.value) {
+      const result = await adminAPI.clandes.exchangeCodexOAuth(oauthClient.sessionId.value, authCode.trim())
+      const credentials: Record<string, unknown> = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        id_token: result.id_token,
+        expires_in: result.expires_in,
+        email: result.email,
+        chatgpt_account_id: result.chatgpt_account_id,
+        plan_type: result.plan_type,
+      }
+      const extra: Record<string, unknown> = { clandes: true }
+      if (result.email) extra.email = result.email
+      if (result.plan_type) extra.plan_type = result.plan_type
+      if (!applyTempUnschedConfig(credentials)) return
+      await adminAPI.accounts.create({
+        name: form.name,
+        notes: form.notes,
+        platform: 'openai',
+        type: 'oauth',
+        credentials,
+        extra,
+        proxy_id: form.proxy_id,
+        concurrency: form.concurrency,
+        load_factor: form.load_factor ?? undefined,
+        priority: form.priority,
+        rate_multiplier: form.rate_multiplier,
+      })
+      emit('created')
+      emit('close')
+      return
+    }
+
     const stateToUse = (oauthFlowRef.value?.oauthState || oauthClient.oauthState.value || '').trim()
     if (!stateToUse) {
       oauthClient.error.value = t('admin.accounts.oauth.authFailed')

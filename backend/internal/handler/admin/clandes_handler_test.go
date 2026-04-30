@@ -17,7 +17,7 @@ import (
 
 func TestClandesHandler_GetStatus_NilClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewClandesHandler(nil, nil, nil)
+	h := NewClandesHandler(nil, nil, nil, nil)
 
 	router := gin.New()
 	router.GET("/status", h.GetStatus)
@@ -39,7 +39,7 @@ func TestClandesHandler_GetStatus_NilClient(t *testing.T) {
 
 func TestClandesHandler_SyncAccounts_NilClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewClandesHandler(nil, nil, nil)
+	h := NewClandesHandler(nil, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/sync", h.SyncAccounts)
@@ -53,7 +53,7 @@ func TestClandesHandler_SyncAccounts_NilClient(t *testing.T) {
 
 func TestClandesHandler_StartOAuthLogin_NilClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewClandesHandler(nil, nil, nil)
+	h := NewClandesHandler(nil, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/oauth/start", h.StartOAuthLogin)
@@ -71,7 +71,7 @@ func TestClandesHandler_StartOAuthLogin_NilClient(t *testing.T) {
 
 func TestClandesHandler_CompleteOAuthLogin_NilClient(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewClandesHandler(nil, nil, nil)
+	h := NewClandesHandler(nil, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/oauth/exchange", h.CompleteOAuthLogin)
@@ -91,7 +91,7 @@ func TestClandesHandler_CompleteOAuthLogin_NilClient(t *testing.T) {
 
 func TestClandesHandler_CompleteOAuthLogin_NilClient_BadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewClandesHandler(nil, nil, nil)
+	h := NewClandesHandler(nil, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/oauth/exchange", h.CompleteOAuthLogin)

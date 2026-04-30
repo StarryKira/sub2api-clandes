@@ -610,6 +610,8 @@ func registerClandesRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		clandes.POST("/sync", h.Admin.Clandes.SyncAccounts)
 		clandes.POST("/oauth/start", h.Admin.Clandes.StartOAuthLogin)
 		clandes.POST("/oauth/exchange", h.Admin.Clandes.CompleteOAuthLogin)
+		clandes.POST("/accounts/:id/refresh", h.Admin.Clandes.RefreshCodexAccountToken)
+		clandes.GET("/accounts/:id/profile", h.Admin.Clandes.GetCodexProfile)
 	}
 }
 
