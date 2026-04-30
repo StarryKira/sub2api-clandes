@@ -4628,7 +4628,7 @@ const handleOpenAIExchange = async (authCode: string) => {
   oauthClient.error.value = ''
 
   try {
-    // Codex via clandes RPC
+    // Codex via clandes RPC — same flow as Claude clandes
     if (clandesExclusive.value) {
       const result = await adminAPI.clandes.exchangeCodexOAuth(oauthClient.sessionId.value, authCode.trim())
       const credentials: Record<string, unknown> = {
@@ -4640,25 +4640,34 @@ const handleOpenAIExchange = async (authCode: string) => {
         chatgpt_account_id: result.chatgpt_account_id,
         plan_type: result.plan_type,
       }
-      const extra: Record<string, unknown> = { clandes: true }
-      if (result.email) extra.email = result.email
-      if (result.plan_type) extra.plan_type = result.plan_type
-      if (!applyTempUnschedConfig(credentials)) return
-      await adminAPI.accounts.create({
-        name: form.name,
-        notes: form.notes,
-        platform: 'openai',
-        type: 'oauth',
-        credentials,
-        extra,
-        proxy_id: form.proxy_id,
-        concurrency: form.concurrency,
-        load_factor: form.load_factor ?? undefined,
-        priority: form.priority,
-        rate_multiplier: form.rate_multiplier,
-      })
-      emit('created')
-      emit('close')
+      const baseExtra: Record<string, unknown> = {}
+      if (result.email) baseExtra.email = result.email
+      if (result.plan_type) baseExtra.plan_type = result.plan_type
+      const extra: Record<string, unknown> = buildOpenAIExtra(baseExtra) ?? {}
+      if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {
+        extra.window_cost_limit = windowCostLimit.value
+        extra.window_cost_sticky_reserve = windowCostStickyReserve.value ?? 10
+      }
+      if (sessionLimitEnabled.value && maxSessions.value != null && maxSessions.value > 0) {
+        extra.max_sessions = maxSessions.value
+        extra.session_idle_timeout_minutes = sessionIdleTimeout.value ?? 5
+      }
+      if (rpmLimitEnabled.value) {
+        const DEFAULT_BASE_RPM = 15
+        extra.base_rpm = (baseRpm.value != null && baseRpm.value > 0) ? baseRpm.value : DEFAULT_BASE_RPM
+        extra.rpm_strategy = rpmStrategy.value
+        if (rpmStickyBuffer.value != null && rpmStickyBuffer.value > 0) {
+          extra.rpm_sticky_buffer = rpmStickyBuffer.value
+        }
+      }
+      if (userMsgQueueMode.value) {
+        extra.user_msg_queue_mode = userMsgQueueMode.value
+      }
+      if (sessionIdMaskingEnabled.value) {
+        extra.session_id_masking_enabled = true
+      }
+      applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
+      await createAccountAndFinish('openai', 'oauth', credentials, extra)
       return
     }
 
