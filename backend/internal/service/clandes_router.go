@@ -279,7 +279,7 @@ func (r *clandesRouterImpl) ReportUsage(ctx context.Context, call proto.Router_r
 		// so session_window_start/end never populate via UpdateSessionWindow.
 		// Persist a predicted 5h window and bump the per-minute RPM so the
 		// admin page's current_window_cost and current_rpm reflect reality.
-		if rctx.Account != nil && rctx.Account.IsAnthropicOAuthOrSetupToken() {
+		if rctx.Account != nil && (rctx.Account.IsAnthropicOAuthOrSetupToken() || rctx.Account.IsOpenAIOAuth()) {
 			if r.rateLimitService != nil && rctx.Account.GetWindowCostLimit() > 0 {
 				r.rateLimitService.EnsurePredictedSessionWindow(bctx, rctx.Account)
 			}
