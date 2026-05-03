@@ -136,3 +136,7 @@ docs/*
 frontend/coverage/
 aicodex
 output/
+/AGENTS.md
+/CHANGELOG.md
+frontend/verify_*.mjs
+frontend/verify_screenshots/

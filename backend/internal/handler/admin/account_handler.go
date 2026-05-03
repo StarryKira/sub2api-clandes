@@ -58,6 +58,7 @@ type AccountHandler struct {
 	sessionLimitCache       service.SessionLimitCache
 	rpmCache                service.RPMCache
 	tokenCacheInvalidator   service.TokenCacheInvalidator
+	clandesClient           *service.ClandesClient // may be nil
 }
 
 // NewAccountHandler creates a new admin account handler
@@ -75,6 +76,7 @@ func NewAccountHandler(
 	sessionLimitCache service.SessionLimitCache,
 	rpmCache service.RPMCache,
 	tokenCacheInvalidator service.TokenCacheInvalidator,
+	clandesClient *service.ClandesClient,
 ) *AccountHandler {
 	return &AccountHandler{
 		adminService:            adminService,
@@ -90,6 +92,7 @@ func NewAccountHandler(
 		sessionLimitCache:       sessionLimitCache,
 		rpmCache:                rpmCache,
 		tokenCacheInvalidator:   tokenCacheInvalidator,
+		clandesClient:           clandesClient,
 	}
 }
 
@@ -558,6 +561,17 @@ func (h *AccountHandler) Create(c *gin.Context) {
 		h.adminService.ForceAntigravityPrivacy(ctx, account)
 		// OpenAI OAuth: 新账号直接设置隐私
 		h.adminService.ForceOpenAIPrivacy(ctx, account)
+		// Clandes: 自动注册到 clandes（含代理信息）
+		if service.IsClandesAccount(account) && h.clandesClient != nil {
+			if account.ProxyID != nil && account.Proxy == nil {
+				if p, pErr := h.adminService.GetProxy(ctx, *account.ProxyID); pErr == nil && p != nil {
+					account.Proxy = p
+				}
+			}
+			if regErr := service.RegisterSingleAccountToClandes(ctx, h.clandesClient, account); regErr != nil {
+				c.Writer.Header().Set("X-Clandes-Sync-Warning", regErr.Error())
+			}
+		}
 		return h.buildAccountResponseWithRuntime(ctx, account), nil
 	})
 	if err != nil {

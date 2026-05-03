@@ -92,6 +92,9 @@ func RegisterAdminRoutes(
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
+		// Clandes 集成
+		registerClandesRoutes(admin, h)
+
 		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
 	}
@@ -595,6 +598,20 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		templates.DELETE("/:id", h.Admin.ChannelMonitorTemplate.Delete)
 		templates.GET("/:id/monitors", h.Admin.ChannelMonitorTemplate.AssociatedMonitors)
 		templates.POST("/:id/apply", h.Admin.ChannelMonitorTemplate.Apply)
+	}
+}
+
+func registerClandesRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	clandes := admin.Group("/clandes")
+	{
+		clandes.GET("/status", h.Admin.Clandes.GetStatus)
+		clandes.GET("/config", h.Admin.Clandes.GetConfig)
+		clandes.POST("/config", h.Admin.Clandes.UpdateConfig)
+		clandes.POST("/sync", h.Admin.Clandes.SyncAccounts)
+		clandes.POST("/oauth/start", h.Admin.Clandes.StartOAuthLogin)
+		clandes.POST("/oauth/exchange", h.Admin.Clandes.CompleteOAuthLogin)
+		clandes.POST("/accounts/:id/refresh", h.Admin.Clandes.RefreshCodexAccountToken)
+		clandes.GET("/accounts/:id/profile", h.Admin.Clandes.GetCodexProfile)
 	}
 }
 

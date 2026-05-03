@@ -2560,6 +2560,36 @@
         </div>
       </div>
 
+      <!-- Clandes 专用开关 -->
+      <div
+        v-if="form.platform === 'anthropic' || form.platform === 'openai'"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.clandes.toggle') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.clandes.toggleDesc') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="clandesExclusive = !clandesExclusive"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              clandesExclusive ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                clandesExclusive ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+
       <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
       <div
         v-if="form.platform === 'anthropic' && accountCategory === 'apikey' && webSearchGlobalEnabled"
@@ -2760,9 +2790,9 @@
         :show-help="form.platform === 'anthropic'"
         :show-proxy-warning="form.platform !== 'openai' && !!form.proxy_id"
         :allow-multiple="form.platform === 'anthropic'"
-        :show-cookie-option="form.platform === 'anthropic'"
-        :show-refresh-token-option="form.platform === 'openai' || form.platform === 'antigravity'"
-        :show-mobile-refresh-token-option="form.platform === 'openai'"
+        :show-cookie-option="form.platform === 'anthropic' && !clandesExclusive"
+        :show-refresh-token-option="(form.platform === 'openai' || form.platform === 'antigravity') && !clandesExclusive"
+        :show-mobile-refresh-token-option="form.platform === 'openai' && !clandesExclusive"
         :show-session-token-option="false"
         :show-access-token-option="false"
         :platform="form.platform"
@@ -3287,6 +3317,7 @@ const {
   loadGlobalState: loadQuotaNotifyGlobal,
   writeToExtra: writeQuotaNotifyToExtra,
 } = useQuotaNotifyState()
+const clandesExclusive = ref(false)
 
 // Load global feature states once
 adminAPI.settings.getWebSearchEmulationConfig().then(cfg => {
@@ -4043,6 +4074,7 @@ const resetForm = () => {
   codexCLIOnlyEnabled.value = false
   anthropicPassthroughEnabled.value = false
   webSearchEmulationMode.value = 'default'
+  clandesExclusive.value = false
   // Reset quota control state
   windowCostEnabled.value = false
   windowCostLimit.value = null
@@ -4124,20 +4156,28 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
   } else {
     delete extra.openai_compact_mode
   }
+  if (clandesExclusive.value) {
+    extra.clandes = true
+  } else {
+    delete extra.clandes
+  }
 
   return Object.keys(extra).length > 0 ? extra : undefined
 }
 
 const buildAnthropicExtra = (base?: Record<string, unknown>): Record<string, unknown> | undefined => {
-  if (form.platform !== 'anthropic' || accountCategory.value !== 'apikey') {
-    return base
+  const extra: Record<string, unknown> = { ...(base || {}) }
+
+  if (form.platform === 'anthropic' && clandesExclusive.value) {
+    extra.clandes = true
   }
 
-  const extra: Record<string, unknown> = { ...(base || {}) }
-  if (anthropicPassthroughEnabled.value) {
-    extra.anthropic_passthrough = true
-  } else {
-    delete extra.anthropic_passthrough
+  if (form.platform === 'anthropic' && accountCategory.value === 'apikey') {
+    if (anthropicPassthroughEnabled.value) {
+      extra.anthropic_passthrough = true
+    } else {
+      delete extra.anthropic_passthrough
+    }
   }
   if (webSearchEmulationMode.value === 'default') {
     delete extra.web_search_emulation
@@ -4450,7 +4490,22 @@ const goBackToBasicInfo = () => {
 }
 
 const handleGenerateUrl = async () => {
-  if (form.platform === 'openai') {
+  if (form.platform === 'openai' && clandesExclusive.value) {
+    // Codex via clandes RPC
+    openaiOAuth.loading.value = true
+    openaiOAuth.error.value = ''
+    try {
+      const redirectUri = 'http://localhost:54321/callback'
+      const result = await adminAPI.clandes.startOAuth(redirectUri, form.proxy_id, 'openai')
+      openaiOAuth.authUrl.value = result.auth_url
+      openaiOAuth.sessionId.value = result.session_id
+    } catch (err: any) {
+      openaiOAuth.error.value = err.response?.data?.detail || 'Failed to generate Codex auth URL via clandes'
+      appStore.showError(openaiOAuth.error.value)
+    } finally {
+      openaiOAuth.loading.value = false
+    }
+  } else if (form.platform === 'openai') {
     await openaiOAuth.generateAuthUrl(form.proxy_id)
   } else if (form.platform === 'gemini') {
     await geminiOAuth.generateAuthUrl(
@@ -4461,6 +4516,21 @@ const handleGenerateUrl = async () => {
     )
   } else if (form.platform === 'antigravity') {
     await antigravityOAuth.generateAuthUrl(form.proxy_id)
+  } else if (clandesExclusive.value) {
+    // Clandes: generate auth URL via clandes RPC
+    oauth.loading.value = true
+    oauth.error.value = ''
+    try {
+      const redirectUri = 'http://localhost:54321/callback'
+      const result = await adminAPI.clandes.startOAuth(redirectUri, form.proxy_id)
+      oauth.authUrl.value = result.auth_url
+      oauth.sessionId.value = result.session_id
+    } catch (err: any) {
+      oauth.error.value = err.response?.data?.detail || 'Failed to generate auth URL via clandes'
+      appStore.showError(oauth.error.value)
+    } finally {
+      oauth.loading.value = false
+    }
   } else {
     await oauth.generateAuthUrl(addMethod.value, form.proxy_id)
   }
@@ -4558,6 +4628,49 @@ const handleOpenAIExchange = async (authCode: string) => {
   oauthClient.error.value = ''
 
   try {
+    // Codex via clandes RPC — same flow as Claude clandes
+    if (clandesExclusive.value) {
+      const result = await adminAPI.clandes.exchangeCodexOAuth(oauthClient.sessionId.value, authCode.trim())
+      const credentials: Record<string, unknown> = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        id_token: result.id_token,
+        expires_in: result.expires_in,
+        email: result.email,
+        chatgpt_account_id: result.chatgpt_account_id,
+        plan_type: result.plan_type,
+      }
+      const baseExtra: Record<string, unknown> = {}
+      if (result.email) baseExtra.email = result.email
+      if (result.plan_type) baseExtra.plan_type = result.plan_type
+      const extra: Record<string, unknown> = buildOpenAIExtra(baseExtra) ?? {}
+      if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {
+        extra.window_cost_limit = windowCostLimit.value
+        extra.window_cost_sticky_reserve = windowCostStickyReserve.value ?? 10
+      }
+      if (sessionLimitEnabled.value && maxSessions.value != null && maxSessions.value > 0) {
+        extra.max_sessions = maxSessions.value
+        extra.session_idle_timeout_minutes = sessionIdleTimeout.value ?? 5
+      }
+      if (rpmLimitEnabled.value) {
+        const DEFAULT_BASE_RPM = 15
+        extra.base_rpm = (baseRpm.value != null && baseRpm.value > 0) ? baseRpm.value : DEFAULT_BASE_RPM
+        extra.rpm_strategy = rpmStrategy.value
+        if (rpmStickyBuffer.value != null && rpmStickyBuffer.value > 0) {
+          extra.rpm_sticky_buffer = rpmStickyBuffer.value
+        }
+      }
+      if (userMsgQueueMode.value) {
+        extra.user_msg_queue_mode = userMsgQueueMode.value
+      }
+      if (sessionIdMaskingEnabled.value) {
+        extra.session_id_masking_enabled = true
+      }
+      applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
+      await createAccountAndFinish('openai', 'oauth', credentials, extra)
+      return
+    }
+
     const stateToUse = (oauthFlowRef.value?.oauthState || oauthClient.oauthState.value || '').trim()
     if (!stateToUse) {
       oauthClient.error.value = t('admin.accounts.oauth.authFailed')
@@ -4932,21 +5045,45 @@ const handleAnthropicExchange = async (authCode: string) => {
   oauth.error.value = ''
 
   try {
-    const proxyConfig = form.proxy_id ? { proxy_id: form.proxy_id } : {}
-    const endpoint =
-      addMethod.value === 'oauth'
-        ? '/admin/accounts/exchange-code'
-        : '/admin/accounts/exchange-setup-token-code'
+    let tokenInfo: Record<string, unknown>
 
-    const tokenInfo = await adminAPI.accounts.exchangeCode(endpoint, {
-      session_id: oauth.sessionId.value,
-      code: authCode.trim(),
-      ...proxyConfig
-    })
+    if (clandesExclusive.value) {
+      // Clandes: exchange code via clandes RPC
+      const callbackUrl = 'https://platform.claude.com/oauth/code/callback'
+      const result = await adminAPI.clandes.exchangeOAuth(
+        oauth.sessionId.value,
+        authCode.trim(),
+        callbackUrl
+      )
+      tokenInfo = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        expires_in: result.expires_in,
+        email_address: result.email,
+        org_uuid: result.org_uuid
+      }
+    } else {
+      const proxyConfig = form.proxy_id ? { proxy_id: form.proxy_id } : {}
+      const endpoint =
+        addMethod.value === 'oauth'
+          ? '/admin/accounts/exchange-code'
+          : '/admin/accounts/exchange-setup-token-code'
+
+      tokenInfo = await adminAPI.accounts.exchangeCode(endpoint, {
+        session_id: oauth.sessionId.value,
+        code: authCode.trim(),
+        ...proxyConfig
+      })
+    }
 
     // Build extra with quota control settings
-    const baseExtra = oauth.buildExtraInfo(tokenInfo) || {}
+    const baseExtra = oauth.buildExtraInfo(tokenInfo as any) || {}
     const extra: Record<string, unknown> = { ...baseExtra }
+
+    // Clandes exclusive flag
+    if (clandesExclusive.value) {
+      extra.clandes = true
+    }
 
     // Add window cost limit settings
     if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {
@@ -5070,6 +5207,11 @@ const handleCookieAuth = async (sessionKey: string) => {
         // Build extra with quota control settings
         const baseExtra = oauth.buildExtraInfo(tokenInfo) || {}
         const extra: Record<string, unknown> = { ...baseExtra }
+
+        // Clandes exclusive flag
+        if (clandesExclusive.value) {
+          extra.clandes = true
+        }
 
         // Add window cost limit settings
         if (windowCostEnabled.value && windowCostLimit.value != null && windowCostLimit.value > 0) {

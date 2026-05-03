@@ -1,0 +1,315 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"strconv"
+	"time"
+
+	"go.uber.org/zap"
+
+	proto "github.com/Wei-Shaw/sub2api/internal/pkg/clandes/proto"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+)
+
+// clandesRouterImpl implements proto.Router_Server — the Cap'n Proto callback
+// interface that clandes calls into for routing decisions and usage reporting.
+type clandesRouterImpl struct {
+	reqCache            *clandesRequestCache
+	gatewayService      *GatewayService
+	billingCacheService *BillingCacheService
+	apiKeyService       *APIKeyService
+	subscriptionService *SubscriptionService
+	rateLimitService    *RateLimitService
+}
+
+func newClandesRouterImpl(
+	reqCache *clandesRequestCache,
+	gatewaySvc *GatewayService,
+	billingSvc *BillingCacheService,
+	apiKeySvc *APIKeyService,
+	subSvc *SubscriptionService,
+	rateLimitSvc *RateLimitService,
+) *clandesRouterImpl {
+	return &clandesRouterImpl{
+		reqCache:            reqCache,
+		gatewayService:      gatewaySvc,
+		billingCacheService: billingSvc,
+		apiKeyService:       apiKeySvc,
+		subscriptionService: subSvc,
+		rateLimitService:    rateLimitSvc,
+	}
+}
+
+// RouteRequest is called by clandes before forwarding a request upstream.
+// It validates the API key, checks billing eligibility, selects an account,
+// and caches context for the subsequent reportUsage call.
+//
+// Returns RouteResult.routed with accountId on success, or RouteResult.rejected on failure.
+func (r *clandesRouterImpl) RouteRequest(ctx context.Context, call proto.Router_routeRequest) error {
+	args := call.Args()
+
+	requestID, _ := args.RequestId()
+	apiKeyStr, _ := args.ApiKey()
+	model, _ := args.Model()
+	userAgent, _ := args.UserAgent()
+	sessionID, _ := args.SessionId()
+
+	log := logger.L().With(
+		zap.String("component", "clandes.router"),
+		zap.String("request_id", requestID),
+		zap.String("model", model),
+	)
+
+	reject := func(statusCode uint16, message string) error {
+		res, err := call.AllocResults()
+		if err != nil {
+			return err
+		}
+		result, err := res.NewResult()
+		if err != nil {
+			return err
+		}
+		result.SetRejected()
+		result.Rejected().SetStatusCode(statusCode)
+		return result.Rejected().SetMessage_(message)
+	}
+
+	// 1. Look up API key (uses auth cache)
+	apiKey, err := r.apiKeyService.GetByKey(ctx, apiKeyStr)
+	if err != nil {
+		log.Warn("routeRequest: api key not found", zap.Error(err))
+		return reject(401, "invalid api key")
+	}
+	if apiKey.User == nil {
+		log.Warn("routeRequest: api key has no user")
+		return reject(401, "api key has no user")
+	}
+
+	// 2. Resolve subscription (must precede billing check so subscription-mode
+	// users are gated by quota, not balance).
+	var group *Group
+	if apiKey.Group != nil {
+		group = apiKey.Group
+	}
+	var subscription *UserSubscription
+	if apiKey.Group != nil && apiKey.Group.IsSubscriptionType() && r.subscriptionService != nil && apiKey.GroupID != nil {
+		if sub, err := r.subscriptionService.GetActiveSubscription(ctx, apiKey.User.ID, *apiKey.GroupID); err == nil {
+			subscription = sub
+		}
+	}
+
+	// 3a. Subscription window maintenance (mirrors api_key_auth middleware).
+	// Cap'n Proto bypasses the HTTP auth middleware so we must activate /
+	// reset daily/weekly/monthly windows here — otherwise IncrementUsage
+	// accumulates against stale *_window_start and the frontend's
+	// normalizeExpiredWindows zeroes the display.
+	if subscription != nil {
+		needsMaintenance, validateErr := r.subscriptionService.ValidateAndCheckLimits(subscription, apiKey.Group)
+		if validateErr != nil {
+			status := uint16(403)
+			if errors.Is(validateErr, ErrDailyLimitExceeded) ||
+				errors.Is(validateErr, ErrWeeklyLimitExceeded) ||
+				errors.Is(validateErr, ErrMonthlyLimitExceeded) {
+				status = 429
+			}
+			log.Info("routeRequest: subscription validate failed", zap.Error(validateErr))
+			return reject(status, validateErr.Error())
+		}
+		if needsMaintenance {
+			maintenanceCopy := *subscription
+			r.subscriptionService.DoWindowMaintenance(&maintenanceCopy)
+		}
+	}
+
+	// 3b. Check billing eligibility (balance mode + API key rate limits;
+	// subscription limits were already validated above).
+	if err := r.billingCacheService.CheckBillingEligibility(ctx, apiKey.User, apiKey, group, subscription); err != nil {
+		log.Info("routeRequest: billing eligibility failed", zap.Error(err))
+		return reject(403, err.Error())
+	}
+
+	// 4. Select account (set Claude Code client flag from User-Agent)
+	if claudeCodeUAPattern.MatchString(userAgent) {
+		ctx = SetClaudeCodeClient(ctx, true)
+	}
+	selection, err := r.gatewayService.SelectAccountWithLoadAwareness(
+		ctx,
+		apiKey.GroupID,
+		sessionID,
+		model,
+		nil,
+		"",
+		0,
+	)
+	if err != nil {
+		log.Warn("routeRequest: no available account", zap.Error(err))
+		return reject(503, "no available account")
+	}
+	account := selection.Account
+	// Hold the concurrency slot until ReportUsage (or disconnect cleanup).
+	var releaseFunc func()
+	if selection.Acquired && selection.ReleaseFunc != nil {
+		releaseFunc = selection.ReleaseFunc
+	}
+
+	// Bind sticky session so subsequent requests in the same Claude Code session
+	// route to the same account (preserves prompt cache).
+	if sessionID != "" {
+		_ = r.gatewayService.BindStickySession(ctx, apiKey.GroupID, sessionID, account.ID)
+	}
+
+	// 5. Cache context for reportUsage
+	r.reqCache.set(requestID, &clandesRequestContext{
+		APIKey:       apiKey,
+		User:         apiKey.User,
+		Account:      account,
+		Subscription: subscription,
+		GroupID:      apiKey.GroupID,
+		StartTime:    time.Now(),
+		UserAgent:    userAgent,
+		ReleaseFunc:  releaseFunc,
+	})
+
+	log.Info("routeRequest: routed", zap.Int64("account_id", account.ID))
+
+	// 6. Return RouteResult.routed
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+	result, err := res.NewResult()
+	if err != nil {
+		return err
+	}
+	result.SetRouted()
+	routed := result.Routed()
+	if err := routed.SetAccountId(strconv.FormatInt(account.ID, 10)); err != nil {
+		return err
+	}
+	routed.SetThinkingLevelOverride(proto.ThinkingLevelOverride_noOverride)
+	// Non-Claude-Code clients can't produce the correct billing header hash;
+	// tell the proxy to skip that check.
+	routed.SetSkipBillingCheck(!claudeCodeUAPattern.MatchString(userAgent))
+	return nil
+}
+
+// ReportUsage is called by clandes after a request completes (fire-and-forget).
+// It maps usage data to sub2api's billing system.
+func (r *clandesRouterImpl) ReportUsage(ctx context.Context, call proto.Router_reportUsage) error {
+	args := call.Args()
+
+	requestID, _ := args.RequestId()
+	report, err := args.Report()
+	if err != nil {
+		return nil // best-effort
+	}
+
+	log := logger.L().With(
+		zap.String("component", "clandes.router"),
+		zap.String("request_id", requestID),
+	)
+
+	// Retrieve cached context from routeRequest
+	rctx, release, ok := r.reqCache.getAndDelete(requestID)
+	if !ok {
+		log.Warn("reportUsage: no cached context (expired or unknown request_id)")
+		return nil
+	}
+	// Release the concurrency slot now that the request is complete.
+	if release != nil {
+		release()
+	}
+
+	model, _ := report.Model()
+	durationMs := report.DurationMs()
+	inputTokens := report.InputTokens()
+	outputTokens := report.OutputTokens()
+	statusCode := report.StatusCode()
+	cacheReadTokens := report.CacheReadTokens()
+	cacheWriteTokens := report.CacheWriteTokens()
+
+	result := &ForwardResult{
+		Model:    model,
+		Duration: time.Duration(durationMs) * time.Millisecond,
+		Usage: ClaudeUsage{
+			InputTokens:              int(inputTokens),
+			OutputTokens:             int(outputTokens),
+			CacheReadInputTokens:     int(cacheReadTokens),
+			CacheCreationInputTokens: int(cacheWriteTokens),
+		},
+	}
+
+	log.Info("reportUsage: recording",
+		zap.String("model", model),
+		zap.Int("input_tokens", int(inputTokens)),
+		zap.Int("output_tokens", int(outputTokens)),
+		zap.Int("cache_read_tokens", int(cacheReadTokens)),
+		zap.Int("cache_write_tokens", int(cacheWriteTokens)),
+		zap.Int("status_code", int(statusCode)),
+	)
+
+	// Record billing asynchronously to avoid blocking the capnp callback goroutine
+	go func() {
+		bctx := context.Background()
+		if err := r.gatewayService.RecordUsage(bctx, &RecordUsageInput{
+			Result:           result,
+			APIKey:           rctx.APIKey,
+			User:             rctx.User,
+			Account:          rctx.Account,
+			Subscription:     rctx.Subscription,
+			InboundEndpoint:  "/v1/messages",
+			UpstreamEndpoint: "/v1/messages",
+			UserAgent:        rctx.UserAgent,
+			APIKeyService:    r.apiKeyService,
+		}); err != nil {
+			log.Error("reportUsage: RecordUsage failed", zap.Error(err))
+			return
+		}
+
+		// DB is now authoritative; drop the subscription's in-process L1 cache
+		// and the Redis-backed L2 entry so the next eligibility check and the
+		// next admin read return the fresh usage values.
+		if rctx.Subscription != nil && rctx.APIKey != nil && rctx.APIKey.GroupID != nil {
+			r.subscriptionService.InvalidateSubCache(rctx.User.ID, *rctx.APIKey.GroupID)
+			_ = r.billingCacheService.InvalidateSubscription(bctx, rctx.User.ID, *rctx.APIKey.GroupID)
+		}
+
+		// Cap'n Proto path has no anthropic-ratelimit-unified-5h-* headers,
+		// so session_window_start/end never populate via UpdateSessionWindow.
+		// Persist a predicted 5h window and bump the per-minute RPM so the
+		// admin page's current_window_cost and current_rpm reflect reality.
+		if rctx.Account != nil && (rctx.Account.IsAnthropicOAuthOrSetupToken() || rctx.Account.IsOpenAIOAuth()) {
+			if r.rateLimitService != nil && rctx.Account.GetWindowCostLimit() > 0 {
+				r.rateLimitService.EnsurePredictedSessionWindow(bctx, rctx.Account)
+			}
+			if rctx.Account.GetBaseRPM() > 0 {
+				if err := r.gatewayService.IncrementAccountRPM(bctx, rctx.Account.ID); err != nil {
+					log.Warn("reportUsage: rpm increment failed", zap.Error(err))
+				}
+			}
+		}
+	}()
+
+	return nil
+}
+
+// ReportChunk is called for each SSE chunk during streaming (fire-and-forget).
+// Currently a no-op; reserved for future streaming analytics.
+func (r *clandesRouterImpl) ReportChunk(_ context.Context, _ proto.Router_reportChunk) error {
+	return nil
+}
+
+// OnAccountEvent is called by clandes when an account lifecycle event occurs.
+// Currently logs only; reserved for future account state synchronization.
+func (r *clandesRouterImpl) OnAccountEvent(_ context.Context, call proto.Router_onAccountEvent) error {
+	args := call.Args()
+	accountID, _ := args.AccountId()
+	kind := args.Kind()
+	logger.L().Info("clandes: onAccountEvent",
+		zap.String("component", "clandes.router"),
+		zap.String("account_id", accountID),
+		zap.String("kind", kind.String()),
+	)
+	return nil
+}
